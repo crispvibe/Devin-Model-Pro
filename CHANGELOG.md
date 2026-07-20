@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.19
+
+- 文档安全：移除 README 和 CHANGELOG 中的上游域名引用，改为泛化描述
+
 ## 2.4.18
 
 - README 更新：说明双模式（DevinLocal / Cascade）都支持，Mac + Windows 都支持，两种模式都支持子 Agent
@@ -20,7 +24,7 @@
 
 ## 2.4.15
 
-- 新增代理模式切换：DevinLocal（拦截 server.codeium.com）↔ Cascade（拦截 server.self-serve.windsurf.com）
+- 新增代理模式切换：DevinLocal（适用于 Devin Desktop）↔ Cascade（适用于 Windsurf IDE）
 - UI 加模式切换卡片，切换后自动重启窗口生效
 - Cascade 模式：保留 Cascade 身份 system prompt，不做 Windsurf→Devin 工具名转译
 - DevinLocal 模式：行为不变（清洗 Cascade 身份，工具名归一化到 Devin 风格）
