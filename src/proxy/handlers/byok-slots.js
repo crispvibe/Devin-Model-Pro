@@ -9,13 +9,29 @@ export const BYOK_SLOT_BY_REQUEST = {
   "swe-1-7-max": 1,
 };
 
-export function getByokSlot(requestedModel) {
+// 按账号模式分组：Free 只注入 1.6，Pro 只注入 1.7
+const SWE_1_6_PATTERN = /^swe[-_]?1[-_.]?6/i;
+const SWE_1_7_PATTERN = /^swe[-_]?1[-_.]?7/i;
+
+function matchesAccountMode(modelId, accountMode) {
+  const mode = String(accountMode || "").trim().toLowerCase();
+  if (mode === "free") {
+    return SWE_1_6_PATTERN.test(modelId);
+  }
+  if (mode === "pro") {
+    return SWE_1_7_PATTERN.test(modelId);
+  }
+  // 未选模式：保持旧行为，全部 SWE 都注入（兼容）
+  return SWE_1_6_PATTERN.test(modelId) || SWE_1_7_PATTERN.test(modelId);
+}
+
+export function getByokSlot(requestedModel, accountMode) {
   const id = String(requestedModel || "").trim();
-  if (BYOK_SLOT_BY_REQUEST[id]) {
+  if (BYOK_SLOT_BY_REQUEST[id] && matchesAccountMode(id, accountMode)) {
     return BYOK_SLOT_BY_REQUEST[id];
   }
   const lower = id.toLowerCase();
-  if (/^swe[-_]?1[-_.]?[67]/i.test(lower)) {
+  if (/^swe[-_]?1[-_.]?[67]/i.test(lower) && matchesAccountMode(lower, accountMode)) {
     return 1;
   }
   return null;

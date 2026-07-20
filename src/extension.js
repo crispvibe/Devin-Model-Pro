@@ -6,11 +6,33 @@ const { ProxyManager } = require('./managers/proxyManager');
 const { PatchManager } = require('./managers/patchManager');
 const { reloadWorkbenchWindow } = require('./utils/reloadWorkbench');
 const { getDeviceId, getClientVersion } = require('./utils/integrity');
+const { checkForUpdate } = require('./services/updateChecker');
 
 let proxyManager;
 const KEY_AUTO_START_PROXY = 'devin-model-pro.autoStartProxy';
 const LEGACY_KEY_AUTO_START_PROXY = 'windsurf-byok-plus.autoStartProxy';
 const LEGACY_KEY_AUTO_START_PROXY_2 = 'devin-model-pro.autoStartProxy';
+const KEY_ACCOUNT_MODE = 'devin-model-pro.accountMode';
+
+async function ensureAccountModeSelected(context) {
+  const current = context.globalState.get(KEY_ACCOUNT_MODE);
+  if (current === 'free' || current === 'pro') return current;
+  const choice = await vscode.window.showInformationMessage(
+    '请选择你的 Devin 账号类型（决定注入哪个 SWE 版本）',
+    { modal: true },
+    'Free（注入 swe-1-6）',
+    'Pro（注入 swe-1-7）'
+  );
+  if (choice === 'Free（注入 swe-1-6）') {
+    await context.globalState.update(KEY_ACCOUNT_MODE, 'free');
+    return 'free';
+  }
+  if (choice === 'Pro（注入 swe-1-7）') {
+    await context.globalState.update(KEY_ACCOUNT_MODE, 'pro');
+    return 'pro';
+  }
+  return null;
+}
 
 function activate(context) {
   try {
@@ -32,7 +54,14 @@ function activate(context) {
     context.subscriptions.push(
       vscode.window.registerWebviewViewProvider('devin-model-pro.sidebar', sidebar),
       vscode.commands.registerCommand('devin-model-pro.startProxy', async () => {
-        const ok = await proxyManager.start('both', sidebar.getRuntimeConfigForCurrentMode());
+        const mode = await ensureAccountModeSelected(context);
+        if (!mode) {
+          vscode.window.showWarningMessage('未选择账号类型，代理未启动');
+          return;
+        }
+        const runtime = sidebar.getRuntimeConfigForCurrentMode();
+        runtime.ACCOUNT_MODE = mode;
+        const ok = await proxyManager.start('both', runtime);
         if (ok) {
           await sidebar.ensurePatchAppliedAfterProxyStart(true);
           vscode.window.showInformationMessage('Devin Model Pro 已启动');
@@ -69,31 +98,82 @@ function activate(context) {
         }
         sidebar.refresh();
       }),
-      vscode.commands.registerCommand('devin-model-pro.reloadWorkbench', () => reloadWorkbenchWindow())
+      vscode.commands.registerCommand('devin-model-pro.reloadWorkbench', () => reloadWorkbenchWindow()),
+      vscode.commands.registerCommand('devin-model-pro.checkForUpdates', () => {
+        if (sidebar && sidebar.handleCheckForUpdates) sidebar.handleCheckForUpdates();
+      }),
+      vscode.commands.registerCommand('devin-model-pro.switchAccountMode', async () => {
+        const choice = await vscode.window.showInformationMessage(
+          '切换账号类型（需重启代理生效）',
+          { modal: true },
+          'Free（注入 swe-1-6）',
+          'Pro（注入 swe-1-7）'
+        );
+        if (choice === 'Free（注入 swe-1-6）') {
+          await context.globalState.update(KEY_ACCOUNT_MODE, 'free');
+          vscode.window.showInformationMessage('已切换到 Free 模式，重启代理生效');
+          if (proxyManager.getStatus().running) {
+            proxyManager.stop();
+            const runtime = sidebar.getRuntimeConfigForCurrentMode();
+            runtime.ACCOUNT_MODE = 'free';
+            proxyManager.start('both', runtime);
+          }
+          sidebar.refresh();
+        } else if (choice === 'Pro（注入 swe-1-7）') {
+          await context.globalState.update(KEY_ACCOUNT_MODE, 'pro');
+          vscode.window.showInformationMessage('已切换到 Pro 模式，重启代理生效');
+          if (proxyManager.getStatus().running) {
+            proxyManager.stop();
+            const runtime = sidebar.getRuntimeConfigForCurrentMode();
+            runtime.ACCOUNT_MODE = 'pro';
+            proxyManager.start('both', runtime);
+          }
+          sidebar.refresh();
+        }
+      })
     );
 
     if (context.globalState.get(KEY_AUTO_START_PROXY) === true) {
       setTimeout(() => {
-        proxyManager.start('both', sidebar.getRuntimeConfigForCurrentMode()).then(async ok => {
-          if (ok) {
-            // 自动启动时静默打补丁，打成功则自动重载窗口让补丁生效
-            const before = sidebar.getPatchStatus();
-            const needPatch = before.patches.some(p => p.status !== 'applied');
-            if (needPatch && before.path) {
-              await sidebar.ensurePatchAppliedAfterProxyStart(false);
-              const after = sidebar.getPatchStatus();
-              const stillNeed = after.patches.some(p => p.status !== 'applied');
-              if (!stillNeed) {
-                reloadWorkbenchWindow();
-                return;
-              }
-            }
-            sidebar.refresh();
+        ensureAccountModeSelected(context).then(mode => {
+          if (!mode) {
+            console.log('[Devin Model Pro] 未选择账号类型，跳过自动启动');
+            return;
           }
+          const runtime = sidebar.getRuntimeConfigForCurrentMode();
+          runtime.ACCOUNT_MODE = mode;
+          return proxyManager.start('both', runtime).then(async ok => {
+            if (ok) {
+              // 自动启动时静默打补丁，打成功则自动重载窗口让补丁生效
+              const before = sidebar.getPatchStatus();
+              const needPatch = before.patches.some(p => p.status !== 'applied');
+              if (needPatch && before.path) {
+                await sidebar.ensurePatchAppliedAfterProxyStart(false);
+                const after = sidebar.getPatchStatus();
+                const stillNeed = after.patches.some(p => p.status !== 'applied');
+                if (!stillNeed) {
+                  reloadWorkbenchWindow();
+                  return;
+                }
+              }
+              sidebar.refresh();
+            }
+          });
         }).catch(e => console.error('[Devin Model Pro] 自动启动失败:', e));
       }, 2000);
     }
     console.log('[Devin Model Pro] 扩展已就绪');
+
+    // 启动后静默检查更新（10 秒后，避免阻塞启动），有新版才通知 sidebar
+    setTimeout(() => {
+      checkForUpdate(context).then(result => {
+        if (result && result.hasUpdate && sidebar && sidebar.notifyUpdateAvailable) {
+          sidebar.notifyUpdateAvailable(result);
+        }
+      }).catch(e => {
+        console.error('[Devin Model Pro] 静默更新检查失败:', e);
+      });
+    }, 10000);
   } catch (e) {
     console.error('[Devin Model Pro] activate 失败:', e);
     vscode.window.showErrorMessage('Devin Model Pro 启动失败: ' + (e instanceof Error ? e.message : String(e)));

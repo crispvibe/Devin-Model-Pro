@@ -336,7 +336,7 @@ function routeRequest(arg0, arg1, arg2, arg3, tmp4 = "") {
       const fields = parseFields(unwrapped);
       const modelField = getField(fields, 21, 2);
       const requestedModel = modelField ? modelField.value.toString("utf8") : "";
-      isByok = getByokSlot(requestedModel) !== null;
+      isByok = getByokSlot(requestedModel, process.env.ACCOUNT_MODE) !== null;
       console.log("[" + now() + "] #" + arg3 + " " + tmp4 + "GetChatMessage model=" + requestedModel + " byok=" + isByok + " (" + arg2.length + "b)");
     } catch (e) {
       console.error("[" + now() + "] #" + arg3 + " model parse error: " + e.message + " → official passthrough");

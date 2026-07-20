@@ -93,6 +93,20 @@
   .btn-s:hover {
     @apply bg-white/5 border-vsborder text-vsinputfg;
   }
+  .btn-s.has-update {
+    position: relative;
+  }
+  .btn-s.has-update::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.6);
+  }
 
   .btn-quiet {
     @apply bg-transparent text-vsdesc border border-vsborder;

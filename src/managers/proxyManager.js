@@ -939,6 +939,7 @@ class ProxyManager {
         ...tmp4,
         PROXY_DEVICE_ID: this.deviceId,
         PROXY_CLIENT_VERSION: this.clientVersion,
+        ACCOUNT_MODE: (tmp1 && tmp1.ACCOUNT_MODE) || process.env.ACCOUNT_MODE || "",
         MITM_CERTS_DIR: process.env.MITM_CERTS_DIR || "",
         MITM_CERT_HOST: process.env.MITM_CERT_HOST || certManager.DEFAULT_DOMAIN,
         DEVIN_BUNDLED_RG: bundledRg || process.env.DEVIN_BUNDLED_RG || ""

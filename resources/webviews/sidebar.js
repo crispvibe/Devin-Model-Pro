@@ -908,6 +908,11 @@
     } else if (tmp32 === "clearCache") {
       fn7("config", "busy", "准备清理缓存...");
       fn5("clearCache");
+    } else if (tmp32 === "checkForUpdates") {
+      fn7("config", "busy", "正在检查更新...");
+      fn5("checkForUpdates");
+    } else if (tmp32 === "switchAccountMode") {
+      fn5("switchAccountMode");
     } else if (tmp32 === "reloadIdeWindow") {
       fn7("config", "busy", "正在重载窗口...");
       fn5("reloadIdeWindow");
@@ -1044,6 +1049,26 @@
       if (tmp12.nodeTree) {
         renderNodeTree(tmp12.nodeTree);
       }
+      const badge = fn4('accountModeBadge');
+      if (badge) {
+        const mode = tmp12.accountMode || '';
+        if (mode === 'free') {
+          badge.textContent = 'Free · 注入 swe-1-6';
+          badge.className = 'badge badge-ok';
+          badge.style.background = 'rgba(34,197,94,0.15)';
+          badge.style.color = '#22c55e';
+        } else if (mode === 'pro') {
+          badge.textContent = 'Pro · 注入 swe-1-7';
+          badge.className = 'badge badge-ok';
+          badge.style.background = 'rgba(59,130,246,0.15)';
+          badge.style.color = '#3b82f6';
+        } else {
+          badge.textContent = '未选择';
+          badge.className = 'badge';
+          badge.style.background = 'rgba(239,68,68,0.15)';
+          badge.style.color = '#ef4444';
+        }
+      }
     } else if (tmp12.type === "nodeTree") {
       renderNodeTree(tmp12);
     } else if (tmp12.type === "nodeModelsFetched") {
@@ -1111,6 +1136,15 @@
       }
       fn7("patch", "success", "已选择 extension.js");
       fn5("refreshPatchStatus");
+    } else if (tmp12.type === "updateInfo") {
+      handleUpdateInfo(tmp12);
+    } else if (tmp12.type === "updateAvailable") {
+      // 启动静默检查发现新版，给按钮加红点提示
+      const btn = fn4('checkForUpdatesBtn');
+      if (btn) {
+        btn.classList.add('has-update');
+        btn.title = '发现新版本 v' + tmp12.latestVersion + '，点击查看';
+      }
     } else if (tmp12.type === "log") {
       const tmp02 = fn4("logBox");
       if (!tmp02) {
@@ -1155,6 +1189,119 @@
     if (state) el.dataset.state = state;
     else delete el.dataset.state;
   }
+
+  // ========== 更新弹窗 ==========
+  function handleUpdateInfo(info) {
+    const modal = fn4('updateModal');
+    const title = fn4('updateModalTitle');
+    const body = fn4('updateModalBody');
+    const btns = fn4('updateModalBtns');
+    if (!modal || !body || !btns) return;
+
+    if (info.visible === false) {
+      modal.style.display = 'none';
+      return;
+    }
+    modal.style.display = 'flex';
+
+    const stage = info.stage || 'prompt';
+    const ver = info.latestVersion || '';
+    const cur = info.current || '';
+    const releaseUrl = info.releaseUrl || '';
+    const notes = info.notes || '';
+
+    if (stage === 'prompt') {
+      title.textContent = '发现新版本 v' + ver;
+      let html = '<p style="margin:0 0 8px">当前版本 <b>v' + cur + '</b>，最新版本 <b>v' + ver + '</b></p>';
+      if (notes) {
+        const safe = String(notes).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const limited = safe.length > 600 ? safe.slice(0, 600) + '\n...' : safe;
+        html += '<div style="background:var(--vscode-textBlockQuote-background,rgba(255,255,255,0.04));border-radius:6px;padding:8px 10px;margin:6px 0;max-height:200px;overflow-y:auto;white-space:pre-wrap;font-size:11px">' + limited + '</div>';
+      }
+      body.innerHTML = html;
+      btns.innerHTML = '';
+      const installBtn = document.createElement('button');
+      installBtn.type = 'button';
+      installBtn.className = 'btn btn-p sm';
+      installBtn.textContent = '下载并安装';
+      installBtn.onclick = () => fn5('updateAction', { action: 'install' });
+      btns.appendChild(installBtn);
+      if (releaseUrl) {
+        const openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.className = 'btn btn-s sm';
+        openBtn.textContent = '去 GitHub';
+        openBtn.onclick = () => fn5('updateAction', { action: 'openRelease' });
+        btns.appendChild(openBtn);
+      }
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'btn btn-s sm';
+      cancelBtn.textContent = '稍后';
+      cancelBtn.onclick = () => fn5('updateAction', { action: 'dismiss' });
+      btns.appendChild(cancelBtn);
+    } else if (stage === 'downloading') {
+      title.textContent = '下载中 v' + ver;
+      const pct = info.percent || 0;
+      body.innerHTML = '<p style="margin:0 0 8px">正在下载 v' + ver + '...</p>' +
+        '<div style="background:var(--vscode-editor-background,rgba(255,255,255,0.05));border-radius:6px;height:8px;overflow:hidden">' +
+        '<div style="background:var(--vscode-button-background,#0e639c);height:100%;width:' + pct + '%;transition:width 0.2s"></div></div>' +
+        '<p style="margin:6px 0 0;font-size:11px;color:var(--vscode-descriptionForeground,#888)">' + pct + '%</p>';
+      btns.innerHTML = '';
+    } else if (stage === 'installing') {
+      title.textContent = '安装中';
+      body.innerHTML = '<p style="margin:0">正在安装 v' + ver + '，请稍候...</p>';
+      btns.innerHTML = '';
+    } else if (stage === 'done') {
+      title.textContent = '更新完成';
+      body.innerHTML = '<p style="margin:0 0 8px">已安装 <b>v' + ver + '</b>，重载窗口后生效。</p>';
+      btns.innerHTML = '';
+      const reloadBtn = document.createElement('button');
+      reloadBtn.type = 'button';
+      reloadBtn.className = 'btn btn-p sm';
+      reloadBtn.textContent = '重载窗口';
+      reloadBtn.onclick = () => fn5('updateAction', { action: 'reload' });
+      btns.appendChild(reloadBtn);
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'btn btn-s sm';
+      closeBtn.textContent = '稍后';
+      closeBtn.onclick = () => fn5('updateAction', { action: 'dismiss' });
+      btns.appendChild(closeBtn);
+      // 清掉按钮红点
+      const checkBtn = fn4('checkForUpdatesBtn');
+      if (checkBtn) checkBtn.classList.remove('has-update');
+    } else if (stage === 'error') {
+      title.textContent = '更新失败';
+      body.innerHTML = '<p style="margin:0 0 8px;color:var(--vscode-errorForeground,#f48771)">' + (info.error || '未知错误') + '</p>';
+      btns.innerHTML = '';
+      if (releaseUrl) {
+        const openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.className = 'btn btn-p sm';
+        openBtn.textContent = '去 GitHub 手动下载';
+        openBtn.onclick = () => fn5('updateAction', { action: 'openRelease' });
+        btns.appendChild(openBtn);
+      }
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'btn btn-s sm';
+      closeBtn.textContent = '关闭';
+      closeBtn.onclick = () => fn5('updateAction', { action: 'dismiss' });
+      btns.appendChild(closeBtn);
+    }
+  }
+
+  // 关闭按钮和遮罩点击
+  (function bindUpdateModalClose() {
+    const btn = fn4('btnCloseUpdateModal');
+    if (btn) btn.addEventListener('click', () => fn5('updateAction', { action: 'dismiss' }));
+    const modal = fn4('updateModal');
+    if (modal) modal.addEventListener('click', (e) => {
+      if (e.target === modal) fn5('updateAction', { action: 'dismiss' });
+    });
+  })();
+  // ========== 更新弹窗结束 ==========
 
   function showToast(message, state) {
     let stack = fn4('sidebarToastStack');

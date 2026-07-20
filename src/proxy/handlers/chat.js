@@ -112,7 +112,7 @@ function getMaxTokens() {
 }
 function resolveConfiguredModel(arg0) {
   const tmp1 = String(arg0 || '').trim();
-  const tmp2 = getByokSlot(tmp1);
+  const tmp2 = getByokSlot(tmp1, process.env.ACCOUNT_MODE);
   if (tmp2) {
     const tmp02 = getSlotModel(tmp2);
     if (!tmp02) {
@@ -146,7 +146,7 @@ function resolveConfiguredModel(arg0) {
  */
 function requiresConfiguredDefaultModel(arg0) {
   const tmp1 = String(arg0 || '').trim();
-  const tmp2 = getByokSlot(tmp1);
+  const tmp2 = getByokSlot(tmp1, process.env.ACCOUNT_MODE);
 
   // BYOK 槽位模型检查
   if (tmp2) {
@@ -374,7 +374,7 @@ function getServiceTier(arg0, arg1 = '', arg2 = null) {
   if (tmp1.endsWith('-priority') || tmp2.endsWith('-priority')) {
     return 'fast';
   }
-  const tmp3 = arg2 || getByokSlot(tmp1);
+  const tmp3 = arg2 || getByokSlot(tmp1, process.env.ACCOUNT_MODE);
   if (tmp3 === 1 || tmp3 === 2 || tmp3 === 3 || tmp3 === 4) {
     const tmp4 = getSlotServiceTier(tmp3);
     if (tmp4) {
@@ -490,7 +490,7 @@ export async function handleGetChatMessage(arg0, arg1, arg2) {
     genConfig: tmpGenConfig,
   } = parseGetChatMessageRequest(arg2, arg0.headers);
   const tmp9 = 'bot-' + crypto.randomUUID();
-  const tmp10 = getByokSlot(tmp7);
+  const tmp10 = getByokSlot(tmp7, process.env.ACCOUNT_MODE);
   const acceptGzip = String(arg0.headers['connect-accept-encoding'] || '').includes('gzip');
 
   // ✅ 提前验证模型配置

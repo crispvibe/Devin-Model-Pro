@@ -190,12 +190,14 @@ class SidebarProvider {
   async postStatusSnapshot() {
     if (!this.view) return;
     const nodeCfg = nodeConfig_1.readConfig();
+    const accountMode = this.context.globalState.get('devin-model-pro.accountMode') || '';
     this.view.webview.postMessage({
       type: 'status',
       proxy: this.proxyManager.getStatus(),
       patch: this.getPatchStatus(),
       config: this.getEditingScopedConfig(),
       logs: this.logLines.slice(-50),
+      accountMode,
       nodeTree: {
         nodes: nodeCfg.nodes,
         activeNodeId: nodeCfg.activeNodeId,
@@ -574,6 +576,120 @@ class SidebarProvider {
       message: tmp2,
     };
     this.view?.webview.postMessage(tmp3);
+  }
+  // 推送更新信息到前端 modal
+  postUpdateInfo(payload) {
+    this.view?.webview.postMessage({ type: 'updateInfo', ...payload });
+  }
+  // 启动时静默检查到新版，通知前端显示红点提示（不自动弹窗）
+  notifyUpdateAvailable(result) {
+    this._lastUpdateResult = result;
+    this.view?.webview.postMessage({
+      type: 'updateAvailable',
+      current: result.current,
+      latestVersion: result.latestVersion,
+      downloadUrl: result.downloadUrl,
+      releaseUrl: result.releaseUrl,
+      notes: result.notes,
+    });
+  }
+  // 手动触发检查
+  async handleCheckForUpdates() {
+    this.postActionState('config', 'busy', '正在检查更新...');
+    try {
+      const { checkForUpdate } = require('../services/updateChecker');
+      const result = await checkForUpdate(this.context);
+      if (result.error) {
+        this.postActionState('config', 'error', '检查更新失败：' + result.error);
+        return;
+      }
+      if (!result.hasUpdate) {
+        this.postActionState('config', 'success', '已是最新版本 v' + result.current);
+        return;
+      }
+      this._lastUpdateResult = result;
+      this.postUpdateInfo({
+        visible: true,
+        current: result.current,
+        latestVersion: result.latestVersion,
+        downloadUrl: result.downloadUrl,
+        releaseUrl: result.releaseUrl,
+        notes: result.notes,
+        stage: 'prompt',
+      });
+    } catch (e) {
+      const tmp1 = e instanceof Error ? e.message : String(e);
+      this.postActionState('config', 'error', '检查更新失败：' + tmp1);
+    }
+  }
+  // 执行下载安装
+  async handleUpdateAction(action) {
+    if (action === 'dismiss') {
+      this.postUpdateInfo({ visible: false });
+      return;
+    }
+    if (action === 'openRelease') {
+      const result = this._lastUpdateResult;
+      if (result && result.releaseUrl) {
+        vscode.env.openExternal(vscode.Uri.parse(result.releaseUrl));
+      }
+      return;
+    }
+    if (action === 'install') {
+      const result = this._lastUpdateResult;
+      if (!result || !result.downloadUrl) {
+        this.postUpdateInfo({
+          visible: true,
+          stage: 'error',
+          error: '未找到 VSIX 下载地址，请去 GitHub Release 手动下载',
+          releaseUrl: result && result.releaseUrl,
+        });
+        return;
+      }
+      this.postUpdateInfo({
+        visible: true,
+        stage: 'downloading',
+        percent: 0,
+        latestVersion: result.latestVersion,
+      });
+      try {
+        const { downloadAndInstall } = require('../services/updateChecker');
+        await downloadAndInstall(result.latestVersion, result.downloadUrl, (progress) => {
+          if (progress.stage === 'downloading') {
+            this.postUpdateInfo({
+              visible: true,
+              stage: 'downloading',
+              percent: progress.percent,
+              latestVersion: result.latestVersion,
+            });
+          } else if (progress.stage === 'installing') {
+            this.postUpdateInfo({
+              visible: true,
+              stage: 'installing',
+              latestVersion: result.latestVersion,
+            });
+          }
+        });
+        this.postUpdateInfo({
+          visible: true,
+          stage: 'done',
+          latestVersion: result.latestVersion,
+        });
+      } catch (e) {
+        const tmp1 = e instanceof Error ? e.message : String(e);
+        this.postUpdateInfo({
+          visible: true,
+          stage: 'error',
+          error: tmp1,
+          releaseUrl: result.releaseUrl,
+        });
+      }
+      return;
+    }
+    if (action === 'reload') {
+      vscode.commands.executeCommand('workbench.action.reloadWindow');
+      return;
+    }
   }
   postToast(tmp02, tmp1) {
     this.view?.webview.postMessage({
@@ -1399,6 +1515,19 @@ class SidebarProvider {
           const tmp1 = tmp03 instanceof Error ? tmp03.message : String(tmp03);
           this.postActionState('config', 'error', '清理缓存失败：' + tmp1);
         }
+        break;
+      }
+      case 'checkForUpdates': {
+        await this.handleCheckForUpdates();
+        break;
+      }
+      case 'switchAccountMode': {
+        vscode.commands.executeCommand('devin-model-pro.switchAccountMode');
+        break;
+      }
+      case 'updateAction': {
+        const action = String(tmp02.action || '');
+        await this.handleUpdateAction(action);
         break;
       }
       case 'importExternalConfig': {

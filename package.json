@@ -2,7 +2,7 @@
   "name": "devin-model-pro",
   "displayName": "Devin Model Pro",
   "description": "Devin Model Pro — Devin Desktop BYOK 增强，支持官方模型与第三方模型，Free / Pro 账号通用",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "publisher": "crispvibe",
   "license": "MIT",
   "author": {
@@ -107,6 +107,14 @@
       {
         "command": "devin-model-pro.reloadWorkbench",
         "title": "Devin Model Pro: 重载窗口（补丁生效）"
+      },
+      {
+        "command": "devin-model-pro.checkForUpdates",
+        "title": "Devin Model Pro: 检查更新"
+      },
+      {
+        "command": "devin-model-pro.switchAccountMode",
+        "title": "Devin Model Pro: 切换账号模式（Free/Pro）"
       }
     ]
   },

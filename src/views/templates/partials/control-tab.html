@@ -19,6 +19,16 @@
     <div class="btns" style="margin-bottom:10px" id="proxyControlButtons">
         {{proxyControlButtons}}
         <button type="button" class="btn btn-s sm" data-ws-action="clearCache">清理缓存</button>
+        <button type="button" class="btn btn-s sm" id="checkForUpdatesBtn" data-ws-action="checkForUpdates" title="从 GitHub 检查更新">检查更新</button>
+    </div>
+
+    <!-- 账号模式 -->
+    <div class="row between" style="padding:2px 0 8px">
+        <div class="row" style="gap:6px;align-items:center">
+            <span style="font-size:11px;color:{{inputFgColor}}">账号模式</span>
+            <span id="accountModeBadge" class="badge" style="font-size:10px;padding:1px 6px">未选择</span>
+        </div>
+        <button type="button" class="btn btn-s sm" data-ws-action="switchAccountMode" style="font-size:10px;padding:2px 8px">切换</button>
     </div>
 
     <!-- 自动启动 -->
@@ -77,5 +87,17 @@
     <div id="logBody">
         <div class="log-box" id="logBox" style="max-height:300px">{{logContent}}</div>
         <div id="copyToast" class="copy-toast hidden">已复制</div>
+    </div>
+</div>
+
+<!-- 更新弹窗 -->
+<div id="updateModal" class="modal-mask" style="display:none">
+    <div class="modal-body" style="max-width:420px">
+        <div class="modal-head">
+            <span id="updateModalTitle">发现新版本</span>
+            <button type="button" class="btn-icon" id="btnCloseUpdateModal">×</button>
+        </div>
+        <div id="updateModalBody" style="padding:4px 0;font-size:12px;line-height:1.6"></div>
+        <div id="updateModalBtns" class="btns" style="margin-top:10px"></div>
     </div>
 </div>
