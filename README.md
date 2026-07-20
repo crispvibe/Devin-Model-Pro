@@ -9,10 +9,10 @@ Devin Desktop BYOK 增强版，支持官方模型与自定义第三方模型，F
 这是一个 Devin Desktop 的 BYOK 桥接插件，把 Devin 内部的 AI 请求转发到你自己的 API Key。
 
 - Free 账号：用第三方模型替代官方额度
-- Pro 账号：官方模型和第三方模型混用，按槽位切换
-- 4 个 BYOK 槽位，每个槽位独立配置 Host / Key / 模型 / 思考强度
-- Claude / GPT / Gemini 三家模型都能接
+- Pro 账号：官方模型和第三方模型混用
 - SWE 全系列模型自动走第三方 API，不用单独配
+- Claude / GPT / Gemini 三家模型都能接
+- 节点 + 模型方式管理，可配多个节点
 
 记得点个 Star，后续有空会继续维护。
 
@@ -25,6 +25,7 @@ Devin Desktop BYOK 增强版，支持官方模型与自定义第三方模型，F
 本仓库在两者基础上的改动：
 
 - 官方模型和第三方模型都能用，Free / Pro 账号通用
+- 去掉 4 槽位 BYOK，改成节点 + 模型方式管理
 - SWE 全系列模型自动走第三方 API，不用单独配
 - 自动清理系统提示词里的伪造身份指令
 - 子 Agent 本地执行，可以多个同时跑
@@ -43,11 +44,12 @@ Devin Desktop BYOK 增强版，支持官方模型与自定义第三方模型，F
 ## 快速开始
 
 1. 点击左侧 **Devin Model Pro** 图标打开控制面板
-2. 在 **配置连接** Tab 填第三方 API 的地址和 Key，点 **加载模型** 选模型
-3. （可选）从 **Protocol** 下拉手动选 anthropic / openai / gemini，空值自动按模型名识别
-4. 点顶部 **启动** 按钮
-5. 在 **控制状态** Tab 点 **安装补丁**，把 Devin 内部 API 指向本代理
-6. 重载窗口生效
+2. 在 **配置连接** Tab 点 **+ 节点** 添加一个节点，填第三方 API 的地址和 Key
+3. 选中节点后点 **拉取** 加载模型列表，选你要用的模型
+4. （可选）从 **Protocol** 下拉手动选 anthropic / openai / gemini，空值自动按模型名识别
+5. 点顶部 **启动** 按钮
+6. 在 **控制状态** Tab 点 **安装补丁**，把 Devin 内部 API 指向本代理
+7. 重载窗口生效
 
 > 配置字段（API Key、模型、端口、协议等）输入后自动保存，不用手动点保存按钮。
 
@@ -62,32 +64,29 @@ Devin Desktop BYOK 增强版，支持官方模型与自定义第三方模型，F
    - `swe-1-6` / `swe-1-6-medium` / `swe-1-6-fast`
    - `swe1.6` / `swe-1.6`
    - `swe-1-7` / `swe-1-7-medium` / `swe-1-7-max`
-3. **填配置**：在配置连接 Tab 填第三方 API 的地址和 Key，点加载模型选模型。
+3. **填配置**：在配置连接 Tab 点 + 节点添加一个节点，填第三方 API 的地址和 Key，选中节点后点拉取加载模型列表，选你要用的模型。
 4. **装补丁**：在控制状态 Tab 点安装补丁，把 Devin 内部 API 指向本代理。装完重载窗口生效。
 5. **启动代理**：点顶部启动按钮。运行后日志显示在控制状态 Tab。
 
-## 4 BYOK 配置
+## 节点与模型
 
-四个槽位完全独立，可分别指向不同网关、不同 Key、不同模型。
+用节点 + 模型方式管理第三方 API。一个节点 = 一组 API 地址 + Key，节点下可以挂多个模型。
 
-| 槽位 | Devin Desktop 中选择 | 用途 |
-|------|----------------------|------|
-| **BYOK #1** | `Claude Opus 4 BYOK` | 主代理槽位（Opus） |
-| **BYOK #2** | `Claude Opus 4 Thinking BYOK` | Opus 思考模型 |
-| **BYOK #3** | `Claude Sonnet 4 BYOK` | Sonnet 高性价比槽位 |
-| **BYOK #4** | `Claude Sonnet 4 Thinking BYOK` | Sonnet 思考模型 |
+- 点 **+ 节点** 添加节点，填 Base URL 和 API Key
+- 选中节点后点 **拉取** 从该节点加载可用模型列表
+- 选要用的模型，Devin Desktop 发请求时按模型名识别走哪个节点
+- 可配多个节点，分别指向不同网关或不同厂商
 
-侧栏选什么模型，Devin Desktop 走对应槽位时就用那个模型。每个槽位可独立选厂商、模型、思考强度、协议、OpenAI Fast Mode。
+SWE 全系列模型（`swe-1-6` / `swe-1-7` 及所有变体）自动走你配置的节点，不用单独配。
 
 ## 思考强度
 
-切换模型后下拉选项按厂商自动变化，档位 `low` / `medium` / `high` / `xhigh` / `max`，每个槽位单独设。
+切换模型后下拉选项按厂商自动变化，档位 `low` / `medium` / `high` / `xhigh` / `max`。
 
 - Claude 新模型走自适应思考 + effort 参数
 - Claude 旧模型走固定思考预算
 - GPT 走 `reasoning.effort`，默认用 Responses API，不支持时自动回退到 Chat Completions
 - Gemini 3.x 走 `thinking_level`，2.5 旧模型回退到 `thinking_budget`
-- BYOK #2 没选强度时默认按中
 - Claude 多轮历史里没签名的思考块默认会被剔除，避免报 `signature: Field required`
 
 ## 模型路由
@@ -97,8 +96,7 @@ Devin Desktop BYOK 增强版，支持官方模型与自定义第三方模型，F
 | Claude | `claude-*` / `MODEL_CLAUDE*` | `/v1/messages` |
 | GPT | `gpt-*` / `MODEL_GPT*` | `/v1/responses`，失败回退 `/v1/chat/completions` |
 | Gemini | `gemini-*` / `MODEL_GOOGLE_GEMINI*` | `/v1/responses`，失败回退 `/v1/chat/completions` |
-
-SWE 全系列（`swe-1-6` / `swe-1-7` 及所有变体）自动走 BYOK #1。
+| SWE 全系列 | `swe-1-6` / `swe-1-7` 及所有变体 | 自动走你配置的节点 |
 
 你的 API 网关只支持老版 Chat Completions 时，在侧栏 **高级路由** 把 OpenAI API Path 改成 `/v1/chat/completions`，避免每次先探测再回退。
 
@@ -112,7 +110,7 @@ SWE 全系列（`swe-1-6` / `swe-1-7` 及所有变体）自动走 BYOK #1。
 
 插件会自动写入 `proxy-scripts/.env`（已被 `.gitignore` 排除，不会上传）。想手动改参考 `proxy-scripts/.env.example`。
 
-每个槽位（n = 1..4）：
+节点配置（n = 1..4，按节点顺序）：
 
 ```
 BYOKn_ANTHROPIC_API_HOST=
@@ -173,8 +171,8 @@ npm run package
 
 ## 已知限制
 
-- 代码补全只走 Anthropic 通道，用 BYOK #1 的配置，暂不支持 GPT 补全
-- GPT 没有独立的 Devin BYOK 入口，要在 BYOK 槽位里选 GPT 模型
+- 代码补全只走 Anthropic 通道，暂不支持 GPT 补全
+- GPT 没有独立的 Devin BYOK 入口，要在节点模型里选 GPT 模型
 - 你的 API 网关要支持对应接口：Claude `/v1/messages`；GPT/Gemini 优先 `/v1/responses`，不支持时回退 `/v1/chat/completions`
 
 ## 常见问题
@@ -189,7 +187,7 @@ npm run package
 
 **思考无效果**：确认强度没选关闭，Claude 新模型要网关支持自适应思考。
 
-**Bedrock 报 `signature: Field required`**：历史消息里有没有签名的思考块，默认会自动剔除；还失败就新开对话或关掉 BYOK #2 的思考强度。
+**Bedrock 报 `signature: Field required`**：历史消息里有没有签名的思考块，默认会自动剔除；还失败就新开对话。
 
 **GPT 报 `convert_request_failed`**：网关不支持 `/v1/responses`，代理会自动回退；还失败就在高级路由里手动设 OpenAI API Path。
 
