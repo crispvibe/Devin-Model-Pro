@@ -20,6 +20,8 @@ function renderSidebarHtml(ctx) {
     tmp13, tmp14, tmp15, tmp16, tmp17, tmp18, tmp19, tmp20, tmp21, tmp22, tmp23, tmp24,
     tmp25, tmp26, tmp27, tmp28, tmp29, tmp30, tmp31, tmp32, tmp33, tmp34, tmp35, tmp36,
     tmp33a, tmp33b, tmp33c, tmp33d, tmp33e, tmp33f, tmp33g, tmp33h,
+    proxyMode,
+    accountMode,
   } = ctx;
 
   // BYOK 卡片折叠/状态：4 张卡片全部默认折叠（不区分是否已配置）
@@ -212,6 +214,8 @@ function renderSidebarHtml(ctx) {
     inferencePort: esc(String(tmp02.inferencePort)),
     proxyControlButtons: tmp02.running ? '<button type="button" class="btn btn-d" data-ws-action="stopProxy">停止代理</button>' : '<button type="button" class="btn btn-p" data-ws-action="startProxy" data-ws-mode="both">一键启动</button>',
     autoStartChecked: tmp5 ? 'checked' : '',
+    proxyModeBadge: proxyMode === 'cascade' ? 'Cascade' : 'DevinLocal',
+    accountModeBadge: accountMode === 'free' ? 'Free' : (accountMode === 'pro' ? 'Pro' : '未选择'),
 
     // 统计数据
     statPort: tmp02.hybridPort,

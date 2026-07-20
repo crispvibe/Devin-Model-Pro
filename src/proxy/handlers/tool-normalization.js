@@ -1,5 +1,23 @@
 export const KNOWN_TOOL_NAMES = new Set(["read_file", "edit", "multi_edit", "write_to_file", "run_command", "grep_search", "find_by_name", "list_dir", "code_search", "command_status", "browser_preview", "todo_list", "ask_user_question", "deploy_web_app", "read_deployment_config", "check_deploy_status", "create_memory", "search_web", "read_url_content", "view_content_chunk", "skill", "edit_notebook", "read_notebook", "trajectory_search", "read_resource", "list_resources", "read_terminal", "do_not_call", "exec", "write", "read", "grep", "webfetch", "web_search", "todo_write", "run_subagent", "read_subagent", "request_scope", "write_to_process", "get_output", "kill_shell", "find_file_by_name", "notebook_edit", "notebook_read", "mcp_call_tool", "mcp_list_servers", "mcp_list_tools", "mcp_read_resource", "bash"]);
 export const DEVIN_DESKTOP_TOOLS = new Set(["exec", "write", "read", "edit", "grep", "find_file_by_name", "notebook_read", "notebook_edit", "get_output", "kill_shell", "write_to_process", "run_subagent", "read_subagent", "todo_write", "mcp_list_servers", "mcp_list_tools", "mcp_call_tool", "mcp_read_resource", "web_search", "webfetch", "skill", "request_scope", "ask_user_question"]);
+// Cascade 模式不做 Windsurf→Devin 工具名转译，保留 Windsurf 原生工具名回传给客户端
+const PROXY_MODE = (process.env.PROXY_MODE || "devin").toLowerCase() === "cascade" ? "cascade" : "devin";
+// Windsurf 原生工具名 + 常见别名，Cascade 模式下原样返回不转译
+const CASCADE_PASSTHROUGH_TOOLS = new Set([
+  "read_file", "edit", "multi_edit", "write_to_file", "run_command", "grep_search",
+  "find_by_name", "list_dir", "code_search", "command_status", "browser_preview",
+  "todo_list", "ask_user_question", "deploy_web_app", "read_deployment_config",
+  "check_deploy_status", "create_memory", "search_web", "read_url_content",
+  "view_content_chunk", "skill", "edit_notebook", "read_notebook", "trajectory_search",
+  "read_resource", "list_resources", "read_terminal", "do_not_call",
+  // Windsurf 工具别名（normalizeToolInvocation 映射表的 key）
+  "view_file", "open_file", "readFile", "cat_file", "write_file", "create_file",
+  "save_file", "writeFile", "edit_file", "replace_in_file", "find_file", "find_files",
+  "search_files", "rg", "search_text", "search_code", "search_repo", "search_in_codebase",
+  "run_terminal_command", "execute_command", "run_command_line", "shell_command",
+  "update_todo_list", "todo_list_create", "create_todo_list", "update_todos", "manage_todos",
+  "askUserQuestion", "ask_user", "ask_human", "ask_followup_question",
+]);
 const MCP_TOOL_NAME_RE = /^mcp\d+_/i;
 export function isMcpToolName(name) {
   return MCP_TOOL_NAME_RE.test(String(name || "").trim());
@@ -11,6 +29,10 @@ export function isAllowedToolName(name) {
 export function normalizeToolInvocation(arg0, arg1) {
   let tmp2 = arg0;
   const tmp3 = normalizeToolArguments(arg1);
+  // Cascade 模式：Windsurf 原生工具名原样返回，不做 Windsurf→Devin 转译
+  if (PROXY_MODE === "cascade" && CASCADE_PASSTHROUGH_TOOLS.has(String(tmp2 || "").trim())) {
+    return { toolName: String(tmp2 || "").trim(), params: tmp3 };
+  }
   const tmp4 = {
     view_file: "read",
     open_file: "read",

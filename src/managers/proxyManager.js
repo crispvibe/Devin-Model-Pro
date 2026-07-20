@@ -865,7 +865,8 @@ class ProxyManager {
       return false;
     }
     try {
-      const domain = process.env.MITM_CERT_HOST || certManager.DEFAULT_DOMAIN;
+      const proxyMode = (tmp1 && tmp1.PROXY_MODE) || process.env.PROXY_MODE || 'devin';
+      const domain = proxyMode === 'cascade' ? 'server.self-serve.windsurf.com' : (process.env.MITM_CERT_HOST || certManager.DEFAULT_DOMAIN);
       if (!certManager.certsValid(domain)) {
         this.log("🔐 证书缺失或过期，自动生成 MITM 证书...");
         certManager.generateCerts(domain);
@@ -944,8 +945,9 @@ class ProxyManager {
         PROXY_DEVICE_ID: this.deviceId,
         PROXY_CLIENT_VERSION: this.clientVersion,
         ACCOUNT_MODE: (tmp1 && tmp1.ACCOUNT_MODE) || process.env.ACCOUNT_MODE || "",
+        PROXY_MODE: (tmp1 && tmp1.PROXY_MODE) || process.env.PROXY_MODE || "devin",
         MITM_CERTS_DIR: process.env.MITM_CERTS_DIR || "",
-        MITM_CERT_HOST: process.env.MITM_CERT_HOST || certManager.DEFAULT_DOMAIN,
+        MITM_CERT_HOST: ((tmp1 && tmp1.PROXY_MODE) || process.env.PROXY_MODE || "devin") === "cascade" ? "server.self-serve.windsurf.com" : (process.env.MITM_CERT_HOST || certManager.DEFAULT_DOMAIN),
         DEVIN_BUNDLED_RG: bundledRg || process.env.DEVIN_BUNDLED_RG || ""
       },
       stdio: ["ignore", "pipe", "pipe", "ipc"]
@@ -1042,7 +1044,8 @@ class ProxyManager {
             ...tmp4,
             INFERENCE_PORT: String(tmp03),
             PROXY_DEVICE_ID: this.deviceId,
-            PROXY_CLIENT_VERSION: this.clientVersion
+            PROXY_CLIENT_VERSION: this.clientVersion,
+            PROXY_MODE: (tmp1 && tmp1.PROXY_MODE) || process.env.PROXY_MODE || "devin"
           },
           stdio: ["ignore", "pipe", "pipe", "ipc"]
         });

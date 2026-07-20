@@ -112,6 +112,7 @@ test('向后兼容性', async (t) => {
       'proxyActionState', 'configActionState', 'patchActionState',
       'cfgApiMode', 'cfgHybridPort',
       'cfgInferencePort', 'cfgAutoStartProxy', 'proxyControlButtons',
+      'proxyModeBadge',
       'proxyStatusTitle', 'statPort', 'statUptime', 'statRequests',
       'patchBadge', 'patchPathDisplay', 'patchApiUrl', 'patchInferenceUrl',
       'patchActionButtons', 'logBox', 'copyToast',

@@ -12,6 +12,7 @@ const DEBUG_UNKNOWN_FIELDS = process.env.DEBUG_UNKNOWN_FIELDS === "1";
 const DEBUG_EXPORT_SYSTEM_PROMPT = process.env.DEBUG_EXPORT_SYSTEM_PROMPT === "1";
 const DEBUG_SYSTEM_PROMPT_DUMP_PATH = process.env.DEBUG_SYSTEM_PROMPT_DUMP_PATH || "./debug/original-system-prompt.txt";
 const STRIP_UNSIGNED_THINKING = process.env.STRIP_UNSIGNED_THINKING !== "false";
+const PROXY_MODE = (process.env.PROXY_MODE || "devin").toLowerCase() === "cascade" ? "cascade" : "devin";
 let _warnedUnsignedThinking = false;
 let _promptCache = {
   content: "",
@@ -542,7 +543,10 @@ export function parseGetChatMessageRequest(arg0, arg1) {
   const tmp6 = getField(tmp3, 2, 2);
   let tmp7 = tmp6 ? tmp6.value.toString("utf8") : "";
   dumpOriginalSystemPrompt(tmp7);
-  tmp7 = sanitizeSystemPromptIdentity(tmp7);
+  // DevinLocal 模式清洗 Cascade 身份指令；Cascade 模式保留原样
+  if (PROXY_MODE !== "cascade") {
+    tmp7 = sanitizeSystemPromptIdentity(tmp7);
+  }
   {
     const tmp0 = getCustomSystemPrompt();
     if (tmp0) {

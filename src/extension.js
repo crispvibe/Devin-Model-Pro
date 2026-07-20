@@ -9,10 +9,12 @@ const { getDeviceId, getClientVersion } = require('./utils/integrity');
 const { checkForUpdate } = require('./services/updateChecker');
 
 let proxyManager;
+let activateTimers = [];
 const KEY_AUTO_START_PROXY = 'devin-model-pro.autoStartProxy';
 const LEGACY_KEY_AUTO_START_PROXY = 'windsurf-byok-plus.autoStartProxy';
 const LEGACY_KEY_AUTO_START_PROXY_2 = 'devin-model-pro.autoStartProxy';
 const KEY_ACCOUNT_MODE = 'devin-model-pro.accountMode';
+const KEY_PROXY_MODE = 'devin-model-pro.proxyMode'; // 'devin' | 'cascade'
 
 async function ensureAccountModeSelected(context) {
   const current = context.globalState.get(KEY_ACCOUNT_MODE);
@@ -32,6 +34,11 @@ async function ensureAccountModeSelected(context) {
     return 'pro';
   }
   return null;
+}
+
+function getProxyMode(context) {
+  const mode = context.globalState.get(KEY_PROXY_MODE);
+  return mode === 'cascade' ? 'cascade' : 'devin';
 }
 
 function activate(context) {
@@ -61,6 +68,7 @@ function activate(context) {
         }
         const runtime = sidebar.getRuntimeConfigForCurrentMode();
         runtime.ACCOUNT_MODE = mode;
+        runtime.PROXY_MODE = getProxyMode(context);
         const ok = await proxyManager.start('both', runtime);
         if (ok) {
           await sidebar.ensurePatchAppliedAfterProxyStart(true);
@@ -69,8 +77,12 @@ function activate(context) {
         }
       }),
       vscode.commands.registerCommand('devin-model-pro.stopProxy', () => {
-        proxyManager.stop();
-        vscode.window.showInformationMessage('Devin Model Pro 已停止');
+        try {
+          proxyManager.stop();
+          vscode.window.showInformationMessage('Devin Model Pro 已停止');
+        } catch (e) {
+          vscode.window.showErrorMessage('停止代理失败: ' + (e instanceof Error ? e.message : String(e)));
+        }
         sidebar.refresh();
       }),
       vscode.commands.registerCommand('devin-model-pro.applyPatch', async () => {
@@ -115,8 +127,9 @@ function activate(context) {
             proxyManager.stop();
             const runtime = sidebar.getRuntimeConfigForCurrentMode();
             runtime.ACCOUNT_MODE = 'free';
-            proxyManager.start('both', runtime);
-            vscode.window.showInformationMessage('已切换到 Free 模式，代理已重启');
+            runtime.PROXY_MODE = getProxyMode(context);
+            const ok = await proxyManager.start('both', runtime);
+            vscode.window.showInformationMessage(ok ? '已切换到 Free 模式，代理已重启' : '已切换到 Free 模式，但代理重启失败，请查看日志');
           } else {
             vscode.window.showInformationMessage('已切换到 Free 模式，下次启动代理生效');
           }
@@ -127,18 +140,41 @@ function activate(context) {
             proxyManager.stop();
             const runtime = sidebar.getRuntimeConfigForCurrentMode();
             runtime.ACCOUNT_MODE = 'pro';
-            proxyManager.start('both', runtime);
-            vscode.window.showInformationMessage('已切换到 Pro 模式，代理已重启');
+            runtime.PROXY_MODE = getProxyMode(context);
+            const ok = await proxyManager.start('both', runtime);
+            vscode.window.showInformationMessage(ok ? '已切换到 Pro 模式，代理已重启' : '已切换到 Pro 模式，但代理重启失败，请查看日志');
           } else {
             vscode.window.showInformationMessage('已切换到 Pro 模式，下次启动代理生效');
           }
           sidebar.refresh();
         }
+      }),
+      vscode.commands.registerCommand('devin-model-pro.switchProxyMode', async () => {
+        const current = getProxyMode(context);
+        const choice = await vscode.window.showInformationMessage(
+          '切换代理模式（需重启代理生效）\n当前: ' + (current === 'devin' ? 'DevinLocal' : 'Cascade'),
+          { modal: true },
+          'DevinLocal（Devin Desktop）',
+          'Cascade（Windsurf IDE）'
+        );
+        const newMode = choice === 'Cascade（Windsurf IDE）' ? 'cascade' : (choice === 'DevinLocal（Devin Desktop）' ? 'devin' : null);
+        if (!newMode || newMode === current) return;
+        await context.globalState.update(KEY_PROXY_MODE, newMode);
+        if (proxyManager.getStatus().running) {
+          proxyManager.stop();
+          const runtime = sidebar.getRuntimeConfigForCurrentMode();
+          runtime.PROXY_MODE = newMode;
+          const ok = await proxyManager.start('both', runtime);
+          vscode.window.showInformationMessage(ok ? '已切换到 ' + (newMode === 'devin' ? 'DevinLocal' : 'Cascade') + ' 模式，代理已重启' : '已切换到 ' + (newMode === 'devin' ? 'DevinLocal' : 'Cascade') + ' 模式，但代理重启失败，请查看日志');
+        } else {
+          vscode.window.showInformationMessage('已切换到 ' + (newMode === 'devin' ? 'DevinLocal' : 'Cascade') + ' 模式，下次启动代理生效');
+        }
+        sidebar.refresh();
       })
     );
 
     if (context.globalState.get(KEY_AUTO_START_PROXY) === true) {
-      setTimeout(() => {
+      activateTimers.push(setTimeout(() => {
         ensureAccountModeSelected(context).then(mode => {
           if (!mode) {
             console.log('[Devin Model Pro] 未选择账号类型，跳过自动启动');
@@ -146,6 +182,7 @@ function activate(context) {
           }
           const runtime = sidebar.getRuntimeConfigForCurrentMode();
           runtime.ACCOUNT_MODE = mode;
+          runtime.PROXY_MODE = getProxyMode(context);
           return proxyManager.start('both', runtime).then(async ok => {
             if (ok) {
               // 自动启动时静默打补丁，打成功则自动重载窗口让补丁生效
@@ -167,12 +204,12 @@ function activate(context) {
             }
           });
         }).catch(e => console.error('[Devin Model Pro] 自动启动失败:', e));
-      }, 2000);
+      }, 2000));
     }
     console.log('[Devin Model Pro] 扩展已就绪');
 
     // 启动后静默检查更新（60 秒后，避免阻塞启动且等网络稳定），有新版才通知 sidebar
-    setTimeout(() => {
+    activateTimers.push(setTimeout(() => {
       checkForUpdate(context).then(result => {
         if (result && result.hasUpdate && sidebar && sidebar.notifyUpdateAvailable) {
           sidebar.notifyUpdateAvailable(result);
@@ -180,7 +217,7 @@ function activate(context) {
       }).catch(e => {
         console.error('[Devin Model Pro] 静默更新检查失败:', e);
       });
-    }, 60000);
+    }, 60000));
   } catch (e) {
     console.error('[Devin Model Pro] activate 失败:', e);
     vscode.window.showErrorMessage('Devin Model Pro 启动失败: ' + (e instanceof Error ? e.message : String(e)));
@@ -188,8 +225,14 @@ function activate(context) {
 }
 
 function deactivate() {
-  try { proxyManager?.dispose(); } catch {}
+  try {
+    for (const t of activateTimers) clearTimeout(t);
+    activateTimers = [];
+    proxyManager?.dispose();
+  } catch {}
 }
 
 exports.activate = activate;
 exports.deactivate = deactivate;
+exports.getProxyMode = getProxyMode;
+exports.KEY_PROXY_MODE = KEY_PROXY_MODE;

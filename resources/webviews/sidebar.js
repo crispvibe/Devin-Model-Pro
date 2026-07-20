@@ -60,12 +60,16 @@
     return document.getElementById(arg0);
   }
   function fn5(arg0, arg1) {
-    tmp0.postMessage(arg1 ? {
-      command: arg0,
-      ...arg1
-    } : {
-      command: arg0
-    });
+    try {
+      tmp0.postMessage(arg1 ? {
+        command: arg0,
+        ...arg1
+      } : {
+        command: arg0
+      });
+    } catch (e) {
+      console.error('[sidebar] postMessage failed:', e);
+    }
   }
   function fn6(arg0) {
     return String(arg0 == null ? "" : arg0).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -921,6 +925,8 @@
       fn5("checkForUpdates");
     } else if (tmp32 === "switchAccountMode") {
       fn5("switchAccountMode");
+    } else if (tmp32 === "switchProxyMode") {
+      fn5("switchProxyMode");
     } else if (tmp32 === "reloadIdeWindow") {
       fn7("config", "busy", "正在重载窗口...");
       fn5("reloadIdeWindow");
@@ -1069,6 +1075,17 @@
         } else {
           badge.textContent = '未选择';
           badge.className = 'badge badge-warn';
+        }
+      }
+      const pmBadge = fn4('proxyModeBadge');
+      if (pmBadge && tmp12.proxyMode) {
+        const pm = tmp12.proxyMode;
+        if (pm === 'cascade') {
+          pmBadge.textContent = 'Cascade';
+          pmBadge.className = 'badge badge-info';
+        } else {
+          pmBadge.textContent = 'DevinLocal';
+          pmBadge.className = 'badge badge-ok';
         }
       }
     } else if (tmp12.type === "nodeTree") {

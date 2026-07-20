@@ -49,9 +49,10 @@ function parsePortEnv(arg0, arg1) {
 }
 const PORT = parsePortEnv("HYBRID_PORT", 3006);
 const BIND_HOST = process.env.BIND_HOST || "127.0.0.1";
-const REAL_API_HOST = process.env.PROXY_API_HOST || "server.codeium.com";
+const PROXY_MODE = (process.env.PROXY_MODE || "devin").toLowerCase() === "cascade" ? "cascade" : "devin";
+const REAL_API_HOST = process.env.PROXY_API_HOST || (PROXY_MODE === "cascade" ? "server.self-serve.windsurf.com" : "server.codeium.com");
 const REAL_UNLEASH_HOST = "unleash.codeium.com";
-const REAL_CODEIUM_HOST = "server.codeium.com";
+const REAL_CODEIUM_HOST = PROXY_MODE === "cascade" ? "server.self-serve.windsurf.com" : "server.codeium.com";
 const CERTS_DIR = process.env.MITM_CERTS_DIR || new URL("../certs/", import.meta.url);
 const CERT_HOST = process.env.MITM_CERT_HOST || REAL_CODEIUM_HOST;
 // MITM 证书表: host -> {cert, key}
@@ -76,14 +77,14 @@ function getRpcMethod(arg0) {
 }
 function getUpstreamHost(arg0, forceOfficial = false, reqHost = "") {
   if (forceOfficial) {
-    return "server.codeium.com";
+    return REAL_CODEIUM_HOST;
   }
   if (arg0.includes("unleash") || arg0.includes("experiment_config")) {
     return REAL_UNLEASH_HOST;
   }
-  // 如果请求 host 头是 server.codeium.com（MITM 解密的 Codeium 直连请求），保持原 host
-  if (reqHost && reqHost.includes("server.codeium.com")) {
-    return "server.codeium.com";
+  // 如果请求 host 头是上游域名（MITM 解密的直连请求），保持原 host
+  if (reqHost && reqHost.includes(REAL_CODEIUM_HOST)) {
+    return REAL_CODEIUM_HOST;
   }
   return REAL_API_HOST;
 }

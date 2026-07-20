@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.4.18
+
+- README 更新：说明双模式（DevinLocal / Cascade）都支持，Mac + Windows 都支持，两种模式都支持子 Agent
+
+## 2.4.17
+
+- 修复 switchAccountMode 缺少 await 导致代理未完全启动就显示成功
+- 代理重启失败现在会提示用户查看日志（不再误报成功）
+- stopProxy 加错误处理
+- deactivate 清理 setTimeout 避免扩展卸载后回调执行
+- Cascade 模式补全 Windsurf 工具别名 passthrough（view_file/open_file/readFile 等）
+- accountModeBadge 初始渲染改用模板变量（不再硬编码"未选择"）
+- sidebar postMessage 加 try-catch 避免扩展关闭时静默失败
+
+## 2.4.16
+
+- 切换代理模式改为重启代理生效（不再重启窗口）
+
+## 2.4.15
+
+- 新增代理模式切换：DevinLocal（拦截 server.codeium.com）↔ Cascade（拦截 server.self-serve.windsurf.com）
+- UI 加模式切换卡片，切换后自动重启窗口生效
+- Cascade 模式：保留 Cascade 身份 system prompt，不做 Windsurf→Devin 工具名转译
+- DevinLocal 模式：行为不变（清洗 Cascade 身份，工具名归一化到 Devin 风格）
+
 ## 2.4.14
 
 - 修复 subagentStart 会删除正在运行的 agent 的问题（改为只清理已完成）

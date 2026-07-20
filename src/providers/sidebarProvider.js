@@ -195,6 +195,7 @@ class SidebarProvider {
     if (!this.view) return;
     const nodeCfg = nodeConfig_1.readConfig();
     const accountMode = this.context.globalState.get('devin-model-pro.accountMode') || '';
+    const proxyMode = this.context.globalState.get('devin-model-pro.proxyMode') === 'cascade' ? 'cascade' : 'devin';
     this.view.webview.postMessage({
       type: 'status',
       proxy: this.proxyManager.getStatus(),
@@ -202,6 +203,7 @@ class SidebarProvider {
       config: this.getEditingScopedConfig(),
       logs: this.logLines.slice(-50),
       accountMode,
+      proxyMode,
       nodeTree: {
         nodes: nodeCfg.nodes,
         activeNodeId: nodeCfg.activeNodeId,
@@ -381,7 +383,9 @@ class SidebarProvider {
     return tmp1;
   }
   getRuntimeConfigForCurrentMode(tmp02 = this.proxyManager.readEnvConfig()) {
-    return this.getModeScopedConfig(tmp02);
+    const cfg = this.getModeScopedConfig(tmp02);
+    cfg.PROXY_MODE = this.context.globalState.get('devin-model-pro.proxyMode') === 'cascade' ? 'cascade' : 'devin';
+    return cfg;
   }
   writeModeScopedConfig(tmp02) {
     const merged = modelFetcher_1.normalizeProviderBaseUrl({
@@ -1529,6 +1533,10 @@ class SidebarProvider {
         vscode.commands.executeCommand('devin-model-pro.switchAccountMode');
         break;
       }
+      case 'switchProxyMode': {
+        vscode.commands.executeCommand('devin-model-pro.switchProxyMode');
+        break;
+      }
       case 'updateAction': {
         const action = String(tmp02.action || '');
         await this.handleUpdateAction(action);
@@ -1744,6 +1752,8 @@ class SidebarProvider {
     const tmp3 = patchManager_1.PatchManager.loopbackApiUrl(tmp02.hybridPort);
     const tmp4 = patchManager_1.PatchManager.loopbackApiUrl(tmp02.inferencePort);
     const tmp5 = this.context.globalState.get(KEY_AUTO_START_PROXY) === true;
+    const proxyMode = this.context.globalState.get('devin-model-pro.proxyMode') === 'cascade' ? 'cascade' : 'devin';
+    const accountMode = this.context.globalState.get('devin-model-pro.accountMode') || '';
     const tmp6 = tmp1.path
       ? tmp1.path.replace(/\\/g, '/').split('/').slice(-4).join('/')
       : '未找到';
@@ -1859,6 +1869,8 @@ class SidebarProvider {
       tmp34,
       tmp35,
       tmp36,
+      proxyMode,
+      accountMode,
     });
   }
 }

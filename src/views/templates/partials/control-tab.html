@@ -31,11 +31,25 @@
     </div>
 </div>
 
+<!-- 代理模式卡片 -->
+<div class="card" style="margin-bottom:12px">
+    <div class="card-head between">
+        <span>代理模式</span>
+        <span id="proxyModeBadge" class="badge" style="font-size:10px;padding:1px 6px">{{proxyModeBadge}}</span>
+    </div>
+    <div style="font-size:11px;color:{{inputFgColor}};line-height:1.6;margin-bottom:8px">
+        DevinLocal 拦截 server.codeium.com（Devin Desktop），Cascade 拦截 server.self-serve.windsurf.com（Windsurf IDE）。切换后自动重启代理生效。
+    </div>
+    <div class="btns">
+        <button type="button" class="btn btn-s sm" data-ws-action="switchProxyMode">切换代理模式</button>
+    </div>
+</div>
+
 <!-- 账号模式卡片 -->
 <div class="card" style="margin-bottom:12px">
     <div class="card-head between">
         <span>账号模式</span>
-        <span id="accountModeBadge" class="badge" style="font-size:10px;padding:1px 6px">未选择</span>
+        <span id="accountModeBadge" class="badge" style="font-size:10px;padding:1px 6px">{{accountModeBadge}}</span>
     </div>
     <div style="font-size:11px;color:{{inputFgColor}};line-height:1.6;margin-bottom:8px">
         Free 注入 swe-1-6 系列，Pro 注入 swe-1-7 系列，没注入的走官方。
