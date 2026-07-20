@@ -1,36 +1,38 @@
 # Devin Model Pro
 
-Devin Desktop BYOK 增强版，支持官方模型与自定义第三方模型，Free 账号和 Pro 账号都能用。
+Devin Desktop 增强插件，让 Pro 用户能同时用官方模型和第三方模型，Free 用户用第三方模型替代官方额度。
+基于最新 DevinLocal 协议，支持 Devin 全部 Agent 能力，本地执行子 Agent。
 适用于 Mac，Windows 自行适配。
 **完全开源** | 本地运行 | 无后端服务器
 
 ## 项目说明
 
-这是一个 Devin Desktop 的 BYOK 桥接插件，把 Devin 内部的 AI 请求转发到你自己的 API Key。
+这是一个 Devin Desktop 的本地代理插件，把 Devin 发出的 SWE 系列模型请求转发到你自己的 API Key，其他请求原样透传官方。
 
-- Free 账号：用第三方模型替代官方额度
-- Pro 账号：官方模型和第三方模型混用
-- SWE 全系列模型自动走第三方 API，不用单独配
-- Claude / GPT 两家模型都能接
-- 节点 + 模型方式管理，可配多个节点
+- **Pro 用户**：官方模型和第三方模型可以一起用，不用二选一。SWE 走第三方，其他走官方。
+- **Free 用户**：用第三方模型替代官方额度。
+- **DevinLocal 协议**：基于最新 Devin Desktop 的 DevinLocal 模式，支持 Devin 全部 Agent 能力。
+- **子 Agent 本地执行**：主 Agent 派出的子 Agent 在本地跑 LLM 循环 + 工具执行，可以多个同时跑。
+- **两个协议**：Claude（Anthropic）和 OpenAI。
+- **节点 + 模型管理**：可配多个节点，每个节点一组 API 地址 + Key，节点下挂多个模型。
 
 记得点个 Star，后续有空会继续维护。
 
-## 致谢
+## 和上游的区别
 
-本项目 fork 自 [ycx932436/devin-byok-bridge](https://github.com/ycx932436/devin-byok-bridge)，并参考了 [jornlin/devin-byok-plus](https://github.com/jornlin/devin-byok-plus) 的改进版本。
+本项目 fork 自 [ycx932436/devin-byok-bridge](https://github.com/ycx932436/devin-byok-bridge)，并参考了 [jornlin/devin-byok-plus](https://github.com/jornlin/devin-byok-plus)。
 
-感谢原作者 [@ycx932436](https://github.com/ycx932436) 打下的基础，开创了 Devin Desktop BYOK 本地代理的先河。也感谢 [@jornlin](https://github.com/jornlin) 的持续维护。
+感谢原作者 [@ycx932436](https://github.com/ycx932436) 打下的基础，开创了 Devin Desktop 本地代理的先河。也感谢 [@jornlin](https://github.com/jornlin) 的持续维护。
 
-本仓库在两者基础上的改动：
+上游两个版本都是基于旧版 Windsurf 的 Cascade 模式做的，和本插件的核心区别：
 
-- 官方模型和第三方模型都能用，Free / Pro 账号通用
-- 改成节点 + 模型方式管理
-- SWE 全系列模型自动走第三方 API，不用单独配
-- 自动清理系统提示词里的伪造身份指令
-- 子 Agent 本地执行，可以多个同时跑
-- 连接断开时的报错不再刷屏
-- 侧栏新增「使用教程」Tab
+| 对比项 | 上游版本 | 本插件 |
+|--------|----------|--------|
+| 协议模式 | 旧版 Windsurf Cascade | 最新 DevinLocal |
+| Pro 用户 | 只能二选一，全官方或全第三方 | 官方和第三方可以一起用 |
+| 子 Agent | 不支持 | 本地执行，支持多个并发 |
+| Agent 能力 | Cascade 子集 | DevinLocal 全部 |
+| 模型管理 | 槽位 | 节点 + 模型 |
 
 ## 安装
 
@@ -51,7 +53,7 @@ Devin Desktop BYOK 增强版，支持官方模型与自定义第三方模型，F
 6. 在 **控制状态** Tab 点 **安装补丁**，把 Devin 内部 API 指向本代理
 7. 重载窗口生效
 
-> 配置字段（API Key、模型、端口、协议等）输入后自动保存，不用手动点保存按钮。
+> 配置字段输入后自动保存，不用手动点保存按钮。
 
 ## 使用教程
 
@@ -59,7 +61,7 @@ Devin Desktop BYOK 增强版，支持官方模型与自定义第三方模型，F
 
 ![使用教程 Tab 效果](media/tutorial.png)
 
-1. **运行模式**：只支持 DevinLocal 模式，不支持 Cascade（Windsurf）模式。在 Devin 输入框底部把模式切到 DevinLocal，请求才会走本代理。Free 账号和 Pro 账号都能用。
+1. **运行模式**：只支持 DevinLocal 模式。在 Devin 输入框底部把模式切到 DevinLocal，请求才会走本代理。Free 账号和 Pro 账号都能用。
 2. **SWE 系列模型**：SWE 全系列模型都会自动走你配置的第三方 API 模型，不用单独配。支持的标识：
    - `swe-1-6` / `swe-1-6-medium` / `swe-1-6-fast`
    - `swe1.6` / `swe-1.6`
@@ -68,16 +70,32 @@ Devin Desktop BYOK 增强版，支持官方模型与自定义第三方模型，F
 4. **装补丁**：在控制状态 Tab 点安装补丁，把 Devin 内部 API 指向本代理。装完重载窗口生效。
 5. **启动代理**：点顶部启动按钮。运行后日志显示在控制状态 Tab。
 
+## 工作原理
+
+代理拦截 Devin Desktop 发出的请求，按模型名分流：
+
+- **SWE 系列模型**（`swe-1-6` / `swe-1-7` 及所有变体）→ 走你配置的第三方 API
+- **其他所有请求**（官方 Claude / GPT / 搜索 / Embeddings 等）→ 原样透传 Devin 官方
+
+这样 Pro 用户可以同时用官方模型和第三方模型：官方模型走官方额度，SWE 走你自己的 Key。
+
+## 子 Agent
+
+Devin 主 Agent 派出的子 Agent 会在本地执行，跑一个 LLM 循环 + 工具调用，复用主 Agent 的工具定义和你的模型配置。
+
+- **subagent_explore**：只读探索模式，用 grep / glob / read / web_search
+- **subagent_general**：完整工具访问，能读写文件、跑命令
+- 支持多个子 Agent 同时跑
+- 子 Agent 结果会回传给主 Agent
+
 ## 节点与模型
 
 用节点 + 模型方式管理第三方 API。一个节点 = 一组 API 地址 + Key，节点下可以挂多个模型。
 
 - 点 **+ 节点** 添加节点，填 Base URL 和 API Key
 - 选中节点后点 **拉取** 从该节点加载可用模型列表
-- 选要用的模型，Devin Desktop 发请求时按模型名识别走哪个节点
+- 选要用的模型，Devin 发请求时按模型名识别走哪个节点
 - 可配多个节点，分别指向不同网关或不同厂商
-
-SWE 全系列模型（`swe-1-6` / `swe-1-7` 及所有变体）自动走你配置的节点，不用单独配。
 
 ## 思考强度
 
@@ -88,15 +106,15 @@ SWE 全系列模型（`swe-1-6` / `swe-1-7` 及所有变体）自动走你配置
 - GPT 走 `reasoning.effort`，默认用 Responses API，不支持时自动回退到 Chat Completions
 - Claude 多轮历史里没签名的思考块默认会被剔除，避免报 `signature: Field required`
 
-## 模型路由
+## 系统提示词清洗
 
-| 模型 | 识别规则 | API 路径 |
-|------|----------|----------|
-| Claude | `claude-*` / `MODEL_CLAUDE*` | `/v1/messages` |
-| GPT | `gpt-*` / `MODEL_GPT*` | `/v1/responses`，失败回退 `/v1/chat/completions` |
-| SWE 全系列 | `swe-1-6` / `swe-1-7` 及所有变体 | 自动走你配置的节点 |
+代理会自动清理 Devin 发来的系统提示词里的伪造身份指令，包括：
 
-你的 API 网关只支持老版 Chat Completions 时，在侧栏 **高级路由** 把 OpenAI API Path 改成 `/v1/chat/completions`，避免每次先探测再回退。
+- "You are Cascade..."
+- "driven by Cognition's SWE-x.x..."
+- "If asked who you are, answer Cascade..."
+
+避免第三方模型被误导成 Cascade 身份。
 
 ## 平台支持
 
@@ -139,25 +157,6 @@ ADMIN_TOKEN=                  # 可选，设了之后改配置要带这个 token
 - `ANTHROPIC_PROMPT_CACHE=true` — Claude 请求打缓存断点
 - `OPENAI_PROMPT_CACHE=observe` — GPT 前缀缓存模式
 
-## 目录结构
-
-```
-devin-model-pro/
-├── package.json
-├── src/
-│   ├── extension.js           # 插件入口
-│   ├── managers/              # 代理进程 / 补丁管理
-│   ├── providers/             # 侧栏 WebView
-│   ├── services/              # 业务服务
-│   ├── utils/                 # 工具函数
-│   └── views/                 # 视图模板与样式
-│       └── templates/         # HTML partials（config / control / system-tab）
-├── proxy-scripts/             # 代理运行时目录
-├── resources/                 # 图标 + webviews/sidebar.js
-├── test/                      # 单元测试
-└── scripts/                   # 构建 / 打包 / 发布脚本
-```
-
 ## 打包
 
 ```bash
@@ -170,7 +169,7 @@ npm run package
 ## 已知限制
 
 - 代码补全只走 Anthropic 通道，暂不支持 GPT 补全
-- GPT 没有独立的 Devin BYOK 入口，要在节点模型里选 GPT 模型
+- GPT 没有独立的 Devin 入口，要在节点模型里选 GPT 模型
 - 你的 API 网关要支持对应接口：Claude `/v1/messages`；GPT 优先 `/v1/responses`，不支持时回退 `/v1/chat/completions`
 
 ## 常见问题
@@ -201,7 +200,7 @@ npm run package
 
 「安装补丁」会直接修改 Devin Desktop 内置 `extension.js`，IDE 升级后补丁可能失效，安装前会自动备份原文件（`.devin-bak`）。
 
-本地代理默认监听 `127.0.0.1`，请勿把端口暴露到公网。MITM 相关证书不得提交到 Git 或公开分享。
+本地代理默认监听 `127.0.0.1`，请勿把端口暴露到公网。
 
 ## License
 
