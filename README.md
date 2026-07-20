@@ -11,7 +11,7 @@ Devin Desktop BYOK 增强版，支持官方模型与自定义第三方模型，F
 - Free 账号：用第三方模型替代官方额度
 - Pro 账号：官方模型和第三方模型混用
 - SWE 全系列模型自动走第三方 API，不用单独配
-- Claude / GPT / Gemini 三家模型都能接
+- Claude / GPT 两家模型都能接
 - 节点 + 模型方式管理，可配多个节点
 
 记得点个 Star，后续有空会继续维护。
@@ -46,7 +46,7 @@ Devin Desktop BYOK 增强版，支持官方模型与自定义第三方模型，F
 1. 点击左侧 **Devin Model Pro** 图标打开控制面板
 2. 在 **配置连接** Tab 点 **+ 节点** 添加一个节点，填第三方 API 的地址和 Key
 3. 选中节点后点 **拉取** 加载模型列表，选你要用的模型
-4. （可选）从 **Protocol** 下拉手动选 anthropic / openai / gemini，空值自动按模型名识别
+4. （可选）从 **Protocol** 下拉手动选 anthropic / openai，空值自动按模型名识别
 5. 点顶部 **启动** 按钮
 6. 在 **控制状态** Tab 点 **安装补丁**，把 Devin 内部 API 指向本代理
 7. 重载窗口生效
@@ -86,7 +86,6 @@ SWE 全系列模型（`swe-1-6` / `swe-1-7` 及所有变体）自动走你配置
 - Claude 新模型走自适应思考 + effort 参数
 - Claude 旧模型走固定思考预算
 - GPT 走 `reasoning.effort`，默认用 Responses API，不支持时自动回退到 Chat Completions
-- Gemini 3.x 走 `thinking_level`，2.5 旧模型回退到 `thinking_budget`
 - Claude 多轮历史里没签名的思考块默认会被剔除，避免报 `signature: Field required`
 
 ## 模型路由
@@ -95,7 +94,6 @@ SWE 全系列模型（`swe-1-6` / `swe-1-7` 及所有变体）自动走你配置
 |------|----------|----------|
 | Claude | `claude-*` / `MODEL_CLAUDE*` | `/v1/messages` |
 | GPT | `gpt-*` / `MODEL_GPT*` | `/v1/responses`，失败回退 `/v1/chat/completions` |
-| Gemini | `gemini-*` / `MODEL_GOOGLE_GEMINI*` | `/v1/responses`，失败回退 `/v1/chat/completions` |
 | SWE 全系列 | `swe-1-6` / `swe-1-7` 及所有变体 | 自动走你配置的节点 |
 
 你的 API 网关只支持老版 Chat Completions 时，在侧栏 **高级路由** 把 OpenAI API Path 改成 `/v1/chat/completions`，避免每次先探测再回退。
@@ -120,7 +118,7 @@ BYOKn_OPENAI_API_KEY=
 BYOKn_OPENAI_SERVICE_TIER=    # fast 或空，OpenAI 优先级通道
 BYOKn_MODEL=
 BYOKn_THINKING_EFFORT=        # low | medium | high | xhigh | max
-BYOKn_PROTOCOL=               # anthropic | openai | gemini | 空（自动识别）
+BYOKn_PROTOCOL=               # anthropic | openai | 空（自动识别）
 ```
 
 通用：
@@ -139,7 +137,7 @@ ADMIN_TOKEN=                  # 可选，设了之后改配置要带这个 token
 - `VOYAGE_API_KEY=` — Embeddings 走 Voyage 时需要
 - `PROMPT_CACHE_ENABLED=true` — Prompt Cache 总开关
 - `ANTHROPIC_PROMPT_CACHE=true` — Claude 请求打缓存断点
-- `OPENAI_PROMPT_CACHE=observe` — GPT/Gemini 前缀缓存模式
+- `OPENAI_PROMPT_CACHE=observe` — GPT 前缀缓存模式
 
 ## 目录结构
 
@@ -173,7 +171,7 @@ npm run package
 
 - 代码补全只走 Anthropic 通道，暂不支持 GPT 补全
 - GPT 没有独立的 Devin BYOK 入口，要在节点模型里选 GPT 模型
-- 你的 API 网关要支持对应接口：Claude `/v1/messages`；GPT/Gemini 优先 `/v1/responses`，不支持时回退 `/v1/chat/completions`
+- 你的 API 网关要支持对应接口：Claude `/v1/messages`；GPT 优先 `/v1/responses`，不支持时回退 `/v1/chat/completions`
 
 ## 常见问题
 
