@@ -20,12 +20,12 @@ Devin Desktop BYOK 增强版，支持官方模型与自定义第三方模型，F
 
 本项目 fork 自 [ycx932436/devin-byok-bridge](https://github.com/ycx932436/devin-byok-bridge)，并参考了 [jornlin/devin-byok-plus](https://github.com/jornlin/devin-byok-plus) 的改进版本。
 
-感谢原作者 [@ycx932436](https://github.com/ycx932436) 打下的基础，开创了 Devin Desktop BYOK 本地代理的先河。也感谢 [@jornlin](https://github.com/jornlin) 的 4 槽位扩展和持续维护。
+感谢原作者 [@ycx932436](https://github.com/ycx932436) 打下的基础，开创了 Devin Desktop BYOK 本地代理的先河。也感谢 [@jornlin](https://github.com/jornlin) 的持续维护。
 
 本仓库在两者基础上的改动：
 
 - 官方模型和第三方模型都能用，Free / Pro 账号通用
-- 去掉 4 槽位 BYOK，改成节点 + 模型方式管理
+- 改成节点 + 模型方式管理
 - SWE 全系列模型自动走第三方 API，不用单独配
 - 自动清理系统提示词里的伪造身份指令
 - 子 Agent 本地执行，可以多个同时跑
