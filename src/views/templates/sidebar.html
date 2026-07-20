@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{cspSource}} 'unsafe-inline'; img-src {{cspSource}} https: data:; script-src 'nonce-{{nonce}}' {{cspSource}}; connect-src {{cspSource}} ws://127.0.0.1:* ws://localhost:* http://127.0.0.1:* http://localhost:*;">
+<link rel="stylesheet" href="{{cssUri}}"><link rel="stylesheet" href="{{tailwindCssUri}}">
+</head>
+<body>
+
+<!-- 全局状态栏 -->
+<div class="global-status-bar" id="globalStatusBar">
+    <div class="flex items-center justify-between gap-2">
+        <!-- 左侧：状态信息（窄屏自动换行） -->
+        <div class="flex items-center flex-wrap gap-x-3 gap-y-1 min-w-0">
+            <!-- 补丁状态入口（点击切换到控制状态 Tab 的补丁卡片） -->
+            <button type="button" id="patchEntryBtn" class="patch-entry" title="系统补丁">
+                <span class="status-dot" id="patchEntryDot"></span>
+                <span>补丁</span>
+                <span id="patchBadge" class="badge badge-warn">未就绪</span>
+            </button>
+            <div class="status-indicator">
+                <span class="status-dot {{statusDotClass}}"></span>
+                <span class="font-bold">{{statusText}}</span>
+            </div>
+            {{statusInfo}}
+        </div>
+
+        <!-- 右侧：快速操作 -->
+        <div class="flex items-center gap-2 flex-shrink-0">
+            {{statusBarButton}}
+        </div>
+    </div>
+</div>
+
+<!-- 标签页导航 -->
+<div class="tabs">
+    <button type="button" class="tab-btn active" data-tab="tab-config">
+        配置连接
+        <span class="tab-badge hidden" id="configBadge">!</span>
+    </button>
+    <button type="button" class="tab-btn" data-tab="tab-control">
+        控制状态
+        <span class="tab-badge hidden" id="controlBadge">●</span>
+    </button>
+    <button type="button" class="tab-btn" data-tab="tab-tutorial">
+        使用教程
+    </button>
+</div>
+
+<!-- 主面板 -->
+<div id="mainPanel" class="">
+    <!-- 隐藏的配置字段 -->
+    <input type="hidden" id="cfgApiMode" value="unified_custom">
+    <input type="hidden" id="cfgSysPromptOverride" value="{{sysPromptOverride}}">
+    <input type="hidden" id="cfgSysPromptPath" value="{{sysPromptPath}}">
+    <input type="hidden" id="cfgDefaultModelCustom" value="">
+    <div id="proxyActionState" class="action-state hidden">
+        <div id="proxyActionText" class="action-text"></div>
+        <div class="action-progress"><div class="action-progress-bar"></div></div>
+    </div>
+    <div id="configActionState" class="action-state hidden">
+        <div id="configActionText" class="action-text"></div>
+        <div class="action-progress"><div class="action-progress-bar"></div></div>
+    </div>
+
+    <!-- TAB 1: 配置连接 -->
+    <div class="tab-content active" id="tab-config">
+        {{configTab}}
+    </div>
+
+    <!-- TAB 2: 控制状态 -->
+    <div class="tab-content" id="tab-control">
+        {{controlTab}}
+    </div>
+
+    <!-- TAB 3: 使用教程 -->
+    <div class="tab-content" id="tab-tutorial">
+        {{systemTab}}
+    </div>
+</div>
+
+<script nonce="{{nonce}}" src="{{scriptUri}}"></script>
+</body>
+</html>

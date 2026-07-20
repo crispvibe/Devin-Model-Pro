@@ -1,0 +1,60 @@
+<!-- 配置连接 Tab · 节点+模型 -->
+<div class="node-list-section">
+    <div class="section-head">
+        <div class="section-title-row"><span>节点</span><span id="nodeCount" class="section-count"></span></div>
+        <button type="button" class="btn btn-quiet sm" id="btnAddNode">+ 节点</button>
+    </div>
+    <div id="nodeList" class="node-list"></div>
+</div>
+
+<div class="model-list-section">
+    <div class="section-head">
+        <div class="section-title-row"><span>模型</span><span id="modelCount" class="section-count"></span></div>
+        <div style="display:flex;gap:4px">
+            <button type="button" class="btn btn-quiet sm" id="btnFetchModels">拉取</button>
+            <button type="button" class="btn btn-quiet sm" id="btnAddModel">+ 添加</button>
+        </div>
+    </div>
+    <div id="modelFetchStatus" class="model-fetch-status" aria-live="polite">选择节点后拉取模型</div>
+    <div id="modelList" class="model-list" aria-live="polite"></div>
+</div>
+
+<!-- 子 Agent 监控（独立卡片）-->
+<div class="card" style="margin-top:12px;margin-bottom:0">
+    <div class="card-head">子 Agent 监控</div>
+    <div id="subagentPanel" class="subagent-panel"></div>
+</div>
+
+
+<!-- 模型添加弹窗 -->
+<div id="modelModal" class="modal-mask" style="display:none">
+    <div class="modal-body" style="min-width:260px">
+        <div class="modal-head">
+            <span>添加模型</span>
+            <button type="button" class="btn-icon" id="btnCloseModelModal">×</button>
+        </div>
+        <div class="fg"><label>模型名</label><input type="text" id="modalModelName" placeholder="例如 claude-opus-4-8 或自定义中文名"></div>
+        <div class="btns" style="margin-top:8px">
+            <button type="button" class="btn btn-p sm" id="btnSaveModelModal">添加</button>
+        </div>
+    </div>
+</div>
+
+<div id="nodeModal" class="modal-mask" style="display:none">
+    <div class="modal-body">
+        <div class="modal-head">
+            <span id="nodeModalTitle">编辑节点</span>
+            <button type="button" class="btn-icon" id="btnCloseNodeModal">×</button>
+        </div>
+        <div class="fg"><label>名称</label><input type="text" id="modalNodeName" placeholder="例如 主节点"></div>
+        <div class="fg"><label>Base URL</label><input type="text" id="modalNodeHost" placeholder="例如 api.example.com"></div>
+        <div class="fg"><label>API Key</label><input type="text" id="modalNodeKey" placeholder="API Key" autocomplete="off"></div>
+        <div class="fg"><label>API 协议</label><select id="modalNodeProtocol"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option></select></div>
+        <div class="btns" style="margin-top:8px">
+            <button type="button" class="btn btn-s sm" id="btnSaveNodeModal">保存</button>
+            <button type="button" class="btn btn-s sm" id="btnImportClaudeModal">导入 Claude</button>
+            <button type="button" class="btn btn-s sm" id="btnImportCodexModal">导入 GPT</button>
+            <button type="button" class="btn btn-danger sm" id="btnDeleteNodeModal" style="margin-left:auto">删除</button>
+        </div>
+    </div>
+</div>

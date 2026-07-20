@@ -1,0 +1,37 @@
+# 依赖
+node_modules/
+proxy-scripts/node_modules/
+
+# 环境变量
+**/.env
+proxy-scripts/.env
+
+# 构建输出
+dist/
+build/*.vsix
+*.vsix
+proxy-scripts/src/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 测试和调试
+_deob_test/
+**/captures/**
+proxy-scripts/certs/
+src/proxy/certs/
+**/certs/*.pem
+**/certs/*.key
+**/*.pem
+**/*.key
+proxy-scripts/debug/
+
+# IDE配置
+.idea
+.claude
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json

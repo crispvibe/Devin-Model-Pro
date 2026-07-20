@@ -1,0 +1,116 @@
+{
+  "name": "devin-model-pro",
+  "displayName": "Devin Model Pro",
+  "description": "Devin Model Pro — Devin Desktop BYOK 增强，支持官方模型与第三方模型，Free / Pro 账号通用",
+  "version": "2.3.0",
+  "publisher": "crispvibe",
+  "license": "MIT",
+  "author": {
+    "name": "anna",
+    "url": "https://github.com/crispvibe"
+  },
+  "contributors": [
+    {
+      "name": "ycx932436",
+      "url": "https://github.com/ycx932436"
+    },
+    {
+      "name": "jornlin",
+      "url": "https://github.com/jornlin"
+    }
+  ],
+  "scripts": {
+    "test": "node --test test/**/*.test.mjs",
+    "build": "node scripts/build.js",
+    "package": "node scripts/package.js",
+    "release": "node scripts/release.js",
+    "vsce:package": "vsce package --no-dependencies",
+    "vsce:publish": "vsce publish",
+    "lint": "eslint src/**/*.js --max-warnings 50",
+    "format": "prettier --write \"src/**/*.js\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@vscode/vsce": "^3.2.1",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.4.1",
+    "prettier": "^3.8.4",
+    "tailwindcss": "3.4.17",
+    "vscode": "^1.1.37"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jornlin/devin-byok-plus.git"
+  },
+  "homepage": "https://github.com/jornlin/devin-byok-plus",
+  "bugs": {
+    "url": "https://github.com/jornlin/devin-byok-plus/issues"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "devin",
+    "byok",
+    "ai",
+    "claude",
+    "anthropic",
+    "proxy",
+    "multi-model"
+  ],
+  "icon": "resources/icons/icon.png",
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:devin-model-pro.sidebar"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "devin-model-pro",
+          "title": "Devin Model Pro",
+          "icon": "resources/icons/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "devin-model-pro": [
+        {
+          "type": "webview",
+          "id": "devin-model-pro.sidebar",
+          "name": "控制面板",
+          "icon": "resources/icons/icon.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "devin-model-pro.startProxy",
+        "title": "Devin Model Pro: 启动代理"
+      },
+      {
+        "command": "devin-model-pro.stopProxy",
+        "title": "Devin Model Pro: 停止代理"
+      },
+      {
+        "command": "devin-model-pro.applyPatch",
+        "title": "Devin Model Pro: 安装补丁"
+      },
+      {
+        "command": "devin-model-pro.revertPatch",
+        "title": "Devin Model Pro: 还原补丁"
+      },
+      {
+        "command": "devin-model-pro.reloadWorkbench",
+        "title": "Devin Model Pro: 重载窗口（补丁生效）"
+      }
+    ]
+  },
+  "dependencies": {
+    "node-forge": "^1.4.0"
+  }
+}
