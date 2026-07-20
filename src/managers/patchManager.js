@@ -387,39 +387,72 @@ class PatchManager {
         patches: getPatches().map(arg0 => ({
           name: arg0.name,
           status: "missing"
-        }))
+        })),
+        backupStale: false
       };
     }
     const tmp4 = fs.readFileSync(tmp3, "utf-8");
+    const backupStale = PatchManager.checkBackupState(tmp3) === 'stale';
     return {
       path: tmp3,
       patches: getPatches().map(arg0 => ({
         name: arg0.name,
         status: PatchManager.isPatched(tmp4, arg0, tmp1, tmp2) ? "applied" : PatchManager.isAvailable(tmp4, arg0) ? "available" : "missing"
-      }))
+      })),
+      backupStale
     };
   }
   static apply(tmp0, tmp1 = "http://127.0.0.1:3006", tmp2 = "http://127.0.0.1:3001") {
     return PatchManager.applyWithCustomUrls(tmp1, tmp2, tmp0);
   }
+  // 还原单个文件：有 manifest 按 sha256 校验，无 manifest 兼容旧逻辑
+  // 返回 { ok: boolean, reason: 'reverted' | 'already-original' | 'stale' | 'no-backup' }
+  static revertFile(filePath) {
+    const currentSha = PatchManager.sha256Hex(filePath);
+    const manifest = PatchManager.readManifest(filePath);
+    if (manifest && currentSha) {
+      if (currentSha === manifest.originalSha256) {
+        return { ok: true, reason: 'already-original' };
+      }
+      if (currentSha === manifest.patchedSha256) {
+        const bak = PatchManager.resolveExistingBackupPath(filePath);
+        if (bak) {
+          fs.copyFileSync(bak, filePath);
+          PatchManager.updateChecksum(filePath);
+          return { ok: true, reason: 'reverted' };
+        }
+        return { ok: false, reason: 'no-backup' };
+      }
+      // 客户端更新了，备份失效
+      console.log("[patchManager] ⚠️ 客户端已更新，旧备份失效，清理备份: " + filePath);
+      PatchManager.removeBackupAndManifest(filePath);
+      return { ok: false, reason: 'stale' };
+    }
+    // 无 manifest，兼容旧逻辑（直接用备份覆盖，无版本校验）
+    const bak = PatchManager.resolveExistingBackupPath(filePath);
+    if (bak) {
+      fs.copyFileSync(bak, filePath);
+      PatchManager.updateChecksum(filePath);
+      return { ok: true, reason: 'reverted' };
+    }
+    return { ok: false, reason: 'no-backup' };
+  }
   static revert(tmp0) {
     let tmp5 = false;
     const tmp1 = PatchManager.resolveExtensionJsPath(tmp0);
     if (tmp1) {
-      const tmp2 = PatchManager.resolveExistingBackupPath(tmp1);
-      if (tmp2) {
-        fs.copyFileSync(tmp2, tmp1);
-        PatchManager.updateChecksum(tmp1);
-        tmp5 = true;
+      const r = PatchManager.revertFile(tmp1);
+      if (r.ok) tmp5 = true;
+      if (r.reason === 'stale') {
+        try { vscode.window.showWarningMessage("Devin 客户端已更新，旧备份失效，已自动清理。请重新安装补丁。"); } catch {}
       }
     }
     const tmp3 = PatchManager.resolveWorkbenchPath();
     if (tmp3) {
-      const tmp4 = PatchManager.resolveExistingBackupPath(tmp3);
-      if (tmp4) {
-        fs.copyFileSync(tmp4, tmp3);
-        PatchManager.updateChecksum(tmp3);
-        tmp5 = true;
+      const r = PatchManager.revertFile(tmp3);
+      if (r.ok) tmp5 = true;
+      if (r.reason === 'stale') {
+        try { vscode.window.showWarningMessage("Devin 客户端已更新，旧备份失效，已自动清理。请重新安装补丁。"); } catch {}
       }
     }
     return tmp5;
@@ -460,7 +493,86 @@ class PatchManager {
       }
     } catch {}
   }
+  // ===== 备份版本校验（防止客户端更新后用旧备份还原导致文件损坏）=====
+  // 备份时写 manifest 记录原版 sha256 和 patch 后 sha256
+  // 还原/打补丁前比对当前文件 sha256：
+  //   == patchedSha  → 已 patch 状态，安全还原/跳过
+  //   == originalSha → 干净原版，正常 patch
+  //   都不匹配      → 客户端更新了，备份失效，清理重备
+  static sha256Hex(filePath) {
+    try {
+      const buf = fs.readFileSync(filePath);
+      return crypto.createHash("sha256").update(buf).digest("hex");
+    } catch {
+      return null;
+    }
+  }
+  static resolveManifestPath(filePath) {
+    return filePath + ".devin-bak.manifest.json";
+  }
+  static readManifest(filePath) {
+    const mp = PatchManager.resolveManifestPath(filePath);
+    try {
+      if (!fs.existsSync(mp)) return null;
+      const raw = fs.readFileSync(mp, "utf-8");
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  static writeManifest(filePath, manifest) {
+    const mp = PatchManager.resolveManifestPath(filePath);
+    try {
+      fs.writeFileSync(mp, JSON.stringify(manifest, null, 2), "utf-8");
+    } catch {}
+  }
+  static removeBackupAndManifest(filePath) {
+    for (const p of [filePath + ".devin-bak", filePath + ".windsurf-bak", PatchManager.resolveManifestPath(filePath)]) {
+      try { if (fs.existsSync(p)) fs.unlinkSync(p); } catch {}
+    }
+  }
+  // 判断备份是否对当前文件有效：返回 'patched' | 'original' | 'stale' | 'none'
+  static checkBackupState(filePath) {
+    const manifest = PatchManager.readManifest(filePath);
+    const currentSha = PatchManager.sha256Hex(filePath);
+    if (!manifest || !currentSha) return 'none';
+    if (currentSha === manifest.patchedSha256) return 'patched';
+    if (currentSha === manifest.originalSha256) return 'original';
+    return 'stale';
+  }
   static applyPatchesToFile(tmp0, tmp1, tmp2, tmp3) {
+    // 版本校验：有 manifest 时按 sha256 判断当前文件状态
+    const currentSha = PatchManager.sha256Hex(tmp0);
+    const manifest = PatchManager.readManifest(tmp0);
+    if (manifest && currentSha) {
+      if (currentSha === manifest.patchedSha256) {
+        // 当前已是 patch 后状态，检查 URL 是否变化
+        const urlChanged = manifest.apiUrl !== tmp1 || manifest.inferenceUrl !== tmp2;
+        if (!urlChanged) {
+          // URL 未变，跳过
+          const patches = getPatches().filter(p => (p.targetFile || "extension") === tmp3);
+          return {
+            applied: 0,
+            skipped: patches.length,
+            failed: 0,
+            details: patches.map(p => "[跳过] " + p.name + " (已应用)")
+          };
+        }
+        // URL 变了，需要用原版备份还原后重 patch
+        console.log("[patchManager] ⚠️ 检测到 URL 变化（" + manifest.apiUrl + "→" + tmp1 + "），还原后重新 patch: " + tmp0);
+        const bak = PatchManager.resolveExistingBackupPath(tmp0);
+        if (bak) {
+          fs.copyFileSync(bak, tmp0);
+        }
+        // 清掉 manifest，走正常 patch 流程
+        PatchManager.removeBackupAndManifest(tmp0);
+      } else if (currentSha !== manifest.originalSha256) {
+        // 客户端更新了，旧备份失效，清理后重新备份
+        console.log("[patchManager] ⚠️ 检测到客户端文件变化（sha 不匹配备份），清理旧备份重新创建: " + tmp0);
+        PatchManager.removeBackupAndManifest(tmp0);
+      }
+      // currentSha === manifest.originalSha256：当前是干净原版，正常 patch
+    }
     const tmp4 = PatchManager.resolveBackupPath(tmp0);
     const tmp5 = PatchManager.resolveExistingBackupPath(tmp0);
     if (!tmp5) {
@@ -512,6 +624,19 @@ class PatchManager {
     if (tmp10 > 0) {
       fs.writeFileSync(tmp0, tmp6, "utf-8");
       PatchManager.updateChecksum(tmp0);
+      // 写 manifest 记录原版和 patch 后的 sha256，供下次校验
+      const newOriginalSha = tmp5 ? PatchManager.sha256Hex(tmp5) : (fs.existsSync(tmp4) ? PatchManager.sha256Hex(tmp4) : null);
+      const newPatchedSha = PatchManager.sha256Hex(tmp0);
+      if (newOriginalSha && newPatchedSha) {
+        PatchManager.writeManifest(tmp0, {
+          originalSha256: newOriginalSha,
+          patchedSha256: newPatchedSha,
+          createdAt: Date.now(),
+          apiUrl: tmp1,
+          inferenceUrl: tmp2,
+          target: tmp3
+        });
+      }
     }
     return {
       applied: tmp10,

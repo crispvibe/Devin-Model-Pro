@@ -14,23 +14,24 @@ const LEGACY_KEY_AUTO_START_PROXY = 'windsurf-byok-plus.autoStartProxy';
 const LEGACY_KEY_AUTO_START_PROXY_2 = 'devin-model-pro.autoStartProxy';
 const KEY_ACCOUNT_MODE = 'devin-model-pro.accountMode';
 
-// 首次启动选模式：通过 sidebar 自定义 modal 选，不用 vscode 系统弹窗
-// sidebar 在 resolveWebviewView 后才 ready，没 ready 时轮询等待
-async function ensureAccountModeSelected(context, sidebar) {
+async function ensureAccountModeSelected(context) {
   const current = context.globalState.get(KEY_ACCOUNT_MODE);
   if (current === 'free' || current === 'pro') return current;
-  // 等 sidebar ready
-  for (let i = 0; i < 50; i++) {
-    if (sidebar && sidebar.view && sidebar.view.webview) break;
-    await new Promise(r => setTimeout(r, 100));
+  const choice = await vscode.window.showInformationMessage(
+    '请选择你的 Devin 账号类型（决定注入哪个 SWE 版本）',
+    { modal: true },
+    'Free（注入 swe-1-6）',
+    'Pro（注入 swe-1-7）'
+  );
+  if (choice === 'Free（注入 swe-1-6）') {
+    await context.globalState.update(KEY_ACCOUNT_MODE, 'free');
+    return 'free';
   }
-  if (!sidebar || !sidebar.view || !sidebar.view.webview) return null;
-  return new Promise((resolve) => {
-    const onChoice = (mode) => {
-      context.globalState.update(KEY_ACCOUNT_MODE, mode).then(() => resolve(mode));
-    };
-    sidebar.promptAccountModeChoice(onChoice);
-  });
+  if (choice === 'Pro（注入 swe-1-7）') {
+    await context.globalState.update(KEY_ACCOUNT_MODE, 'pro');
+    return 'pro';
+  }
+  return null;
 }
 
 function activate(context) {
@@ -53,7 +54,7 @@ function activate(context) {
     context.subscriptions.push(
       vscode.window.registerWebviewViewProvider('devin-model-pro.sidebar', sidebar),
       vscode.commands.registerCommand('devin-model-pro.startProxy', async () => {
-        const mode = await ensureAccountModeSelected(context, sidebar);
+        const mode = await ensureAccountModeSelected(context);
         if (!mode) {
           vscode.window.showWarningMessage('未选择账号类型，代理未启动');
           return;
@@ -101,14 +102,44 @@ function activate(context) {
       vscode.commands.registerCommand('devin-model-pro.checkForUpdates', () => {
         if (sidebar && sidebar.handleCheckForUpdates) sidebar.handleCheckForUpdates();
       }),
-      vscode.commands.registerCommand('devin-model-pro.switchAccountMode', () => {
-        if (sidebar && sidebar.handleSwitchAccountMode) sidebar.handleSwitchAccountMode();
+      vscode.commands.registerCommand('devin-model-pro.switchAccountMode', async () => {
+        const choice = await vscode.window.showInformationMessage(
+          '切换账号类型（需重启代理生效）',
+          { modal: true },
+          'Free（注入 swe-1-6）',
+          'Pro（注入 swe-1-7）'
+        );
+        if (choice === 'Free（注入 swe-1-6）') {
+          await context.globalState.update(KEY_ACCOUNT_MODE, 'free');
+          if (proxyManager.getStatus().running) {
+            proxyManager.stop();
+            const runtime = sidebar.getRuntimeConfigForCurrentMode();
+            runtime.ACCOUNT_MODE = 'free';
+            proxyManager.start('both', runtime);
+            vscode.window.showInformationMessage('已切换到 Free 模式，代理已重启');
+          } else {
+            vscode.window.showInformationMessage('已切换到 Free 模式，下次启动代理生效');
+          }
+          sidebar.refresh();
+        } else if (choice === 'Pro（注入 swe-1-7）') {
+          await context.globalState.update(KEY_ACCOUNT_MODE, 'pro');
+          if (proxyManager.getStatus().running) {
+            proxyManager.stop();
+            const runtime = sidebar.getRuntimeConfigForCurrentMode();
+            runtime.ACCOUNT_MODE = 'pro';
+            proxyManager.start('both', runtime);
+            vscode.window.showInformationMessage('已切换到 Pro 模式，代理已重启');
+          } else {
+            vscode.window.showInformationMessage('已切换到 Pro 模式，下次启动代理生效');
+          }
+          sidebar.refresh();
+        }
       })
     );
 
     if (context.globalState.get(KEY_AUTO_START_PROXY) === true) {
       setTimeout(() => {
-        ensureAccountModeSelected(context, sidebar).then(mode => {
+        ensureAccountModeSelected(context).then(mode => {
           if (!mode) {
             console.log('[Devin Model Pro] 未选择账号类型，跳过自动启动');
             return;
@@ -119,7 +150,10 @@ function activate(context) {
             if (ok) {
               // 自动启动时静默打补丁，打成功则自动重载窗口让补丁生效
               const before = sidebar.getPatchStatus();
-              const needPatch = before.patches.some(p => p.status !== 'applied');
+              if (before.backupStale) {
+                vscode.window.showWarningMessage('Devin 客户端已更新，正在重新创建备份并安装补丁。');
+              }
+              const needPatch = before.backupStale || before.patches.some(p => p.status !== 'applied');
               if (needPatch && before.path) {
                 await sidebar.ensurePatchAppliedAfterProxyStart(false);
                 const after = sidebar.getPatchStatus();

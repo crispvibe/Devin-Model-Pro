@@ -139,12 +139,20 @@
     const tmp12 = Array.isArray(arg0.patches) ? arg0.patches : [];
     const tmp22 = tmp12.filter(arg02 => arg02 && arg02.status === "applied").length;
     const tmp32 = tmp12.length > 0 && tmp22 === tmp12.length;
-    fn8(fn4("patchBadge"), tmp32, tmp32 ? "已就绪" : "需安装");
-    fn8(fn4("patchModalBadge"), tmp32, tmp32 ? "已就绪" : "需安装");
+    const stale = !!arg0.backupStale;
+    const badgeText = stale ? "客户端已更新" : (tmp32 ? "已就绪" : "需安装");
+    fn8(fn4("patchBadge"), tmp32, badgeText);
+    fn8(fn4("patchModalBadge"), tmp32, badgeText);
+    if (stale) {
+      for (const id of ["patchBadge", "patchModalBadge"]) {
+        const b = fn4(id);
+        if (b) { b.classList.remove("badge-ok", "badge-warn"); b.classList.add("badge-error"); }
+      }
+    }
     const dot = fn4("patchEntryDot");
     if (dot) {
-      dot.classList.toggle("running", !!tmp32);
-      dot.classList.toggle("stopped", !tmp32);
+      dot.classList.toggle("running", !!tmp32 && !stale);
+      dot.classList.toggle("stopped", !tmp32 || stale);
     }
     if (arg0.path) {
       tmp1 = arg0.path;
@@ -1053,20 +1061,14 @@
       if (badge) {
         const mode = tmp12.accountMode || '';
         if (mode === 'free') {
-          badge.textContent = 'Free · 注入 swe-1-6';
+          badge.textContent = 'Free';
           badge.className = 'badge badge-ok';
-          badge.style.background = 'rgba(34,197,94,0.15)';
-          badge.style.color = '#22c55e';
         } else if (mode === 'pro') {
-          badge.textContent = 'Pro · 注入 swe-1-7';
-          badge.className = 'badge badge-ok';
-          badge.style.background = 'rgba(59,130,246,0.15)';
-          badge.style.color = '#3b82f6';
+          badge.textContent = 'Pro';
+          badge.className = 'badge badge-info';
         } else {
           badge.textContent = '未选择';
-          badge.className = 'badge';
-          badge.style.background = 'rgba(239,68,68,0.15)';
-          badge.style.color = '#ef4444';
+          badge.className = 'badge badge-warn';
         }
       }
     } else if (tmp12.type === "nodeTree") {
@@ -1138,8 +1140,6 @@
       fn5("refreshPatchStatus");
     } else if (tmp12.type === "updateInfo") {
       handleUpdateInfo(tmp12);
-    } else if (tmp12.type === "accountModePrompt") {
-      handleAccountModePrompt(tmp12);
     } else if (tmp12.type === "updateAvailable") {
       // 启动静默检查发现新版，给按钮加红点提示
       const btn = fn4('checkForUpdatesBtn');
@@ -1192,77 +1192,6 @@
     else delete el.dataset.state;
   }
 
-  // ========== 账号模式弹窗 ==========
-  function handleAccountModePrompt(info) {
-    const modal = fn4('accountModeModal');
-    const title = fn4('accountModeModalTitle');
-    const body = fn4('accountModeModalBody');
-    const btns = fn4('accountModeModalBtns');
-    if (!modal || !body || !btns) return;
-
-    if (info.visible === false) {
-      modal.style.display = 'none';
-      return;
-    }
-    modal.style.display = 'flex';
-    title.textContent = info.title || '选择账号类型';
-
-    const current = info.current || '';
-    const stage = info.stage || 'choose';
-
-    let html = '';
-    if (current) {
-      const curLabel = current === 'free' ? 'Free（注入 swe-1-6）' : 'Pro（注入 swe-1-7）';
-      html += '<p style="margin:0 0 8px">当前：<b>' + curLabel + '</b></p>';
-    }
-    html += '<p style="margin:0 0 6px">选择你的 Devin 账号类型，决定注入哪个 SWE 版本到第三方 API：</p>';
-    html += '<div style="background:var(--vscode-textBlockQuote-background,rgba(255,255,255,0.04));border-radius:6px;padding:8px 10px;margin:6px 0;font-size:11px;line-height:1.7">';
-    html += '<div><b style="color:#22c55e">Free</b>：注入 swe-1-6 系列（swe-1-6 / medium / fast）</div>';
-    html += '<div style="margin-top:4px"><b style="color:#3b82f6">Pro</b>：注入 swe-1-7 系列（swe-1-7 / medium / max）</div>';
-    html += '<div style="margin-top:6px;color:var(--vscode-descriptionForeground,#888)">没注入的 SWE 版本走官方</div>';
-    html += '</div>';
-    if (stage === 'switch') {
-      html += '<p style="margin:6px 0 0;color:var(--vscode-descriptionForeground,#888);font-size:11px">切换后代理会自动重启</p>';
-    }
-    body.innerHTML = html;
-
-    btns.innerHTML = '';
-    const freeBtn = document.createElement('button');
-    freeBtn.type = 'button';
-    freeBtn.className = 'btn btn-p sm';
-    freeBtn.textContent = 'Free（注入 swe-1-6）';
-    freeBtn.style.background = 'rgba(34,197,94,0.2)';
-    freeBtn.onclick = () => fn5('accountModeAction', { action: 'free' });
-    btns.appendChild(freeBtn);
-
-    const proBtn = document.createElement('button');
-    proBtn.type = 'button';
-    proBtn.className = 'btn btn-p sm';
-    proBtn.textContent = 'Pro（注入 swe-1-7）';
-    proBtn.style.background = 'rgba(59,130,246,0.2)';
-    proBtn.onclick = () => fn5('accountModeAction', { action: 'pro' });
-    btns.appendChild(proBtn);
-
-    if (stage === 'switch' || current) {
-      const cancelBtn = document.createElement('button');
-      cancelBtn.type = 'button';
-      cancelBtn.className = 'btn btn-s sm';
-      cancelBtn.textContent = '取消';
-      cancelBtn.onclick = () => fn5('accountModeAction', { action: 'dismiss' });
-      btns.appendChild(cancelBtn);
-    }
-  }
-  // 账号模式 modal 关闭按钮和遮罩点击
-  (function bindAccountModeModalClose() {
-    const btn = fn4('btnCloseAccountModeModal');
-    if (btn) btn.addEventListener('click', () => fn5('accountModeAction', { action: 'dismiss' }));
-    const modal = fn4('accountModeModal');
-    if (modal) modal.addEventListener('click', (e) => {
-      if (e.target === modal) fn5('accountModeAction', { action: 'dismiss' });
-    });
-  })();
-  // ========== 账号模式弹窗结束 ==========
-
   // ========== 更新弹窗 ==========
   function handleUpdateInfo(info) {
     const modal = fn4('updateModal');
@@ -1285,13 +1214,7 @@
 
     if (stage === 'prompt') {
       title.textContent = '发现新版本 v' + ver;
-      let html = '<p style="margin:0 0 8px">当前版本 <b>v' + cur + '</b>，最新版本 <b>v' + ver + '</b></p>';
-      if (notes) {
-        const safe = String(notes).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const limited = safe.length > 600 ? safe.slice(0, 600) + '\n...' : safe;
-        html += '<div style="background:var(--vscode-textBlockQuote-background,rgba(255,255,255,0.04));border-radius:6px;padding:8px 10px;margin:6px 0;max-height:200px;overflow-y:auto;white-space:pre-wrap;font-size:11px">' + limited + '</div>';
-      }
-      body.innerHTML = html;
+      body.innerHTML = '<p style="margin:0">当前 v' + cur + '，最新 v' + ver + '</p>';
       btns.innerHTML = '';
       const installBtn = document.createElement('button');
       installBtn.type = 'button';
@@ -1299,14 +1222,6 @@
       installBtn.textContent = '下载并安装';
       installBtn.onclick = () => fn5('updateAction', { action: 'install' });
       btns.appendChild(installBtn);
-      if (releaseUrl) {
-        const openBtn = document.createElement('button');
-        openBtn.type = 'button';
-        openBtn.className = 'btn btn-s sm';
-        openBtn.textContent = '去 GitHub';
-        openBtn.onclick = () => fn5('updateAction', { action: 'openRelease' });
-        btns.appendChild(openBtn);
-      }
       const cancelBtn = document.createElement('button');
       cancelBtn.type = 'button';
       cancelBtn.className = 'btn btn-s sm';
@@ -1314,20 +1229,18 @@
       cancelBtn.onclick = () => fn5('updateAction', { action: 'dismiss' });
       btns.appendChild(cancelBtn);
     } else if (stage === 'downloading') {
-      title.textContent = '下载中 v' + ver;
+      title.textContent = '下载中';
       const pct = info.percent || 0;
-      body.innerHTML = '<p style="margin:0 0 8px">正在下载 v' + ver + '...</p>' +
-        '<div style="background:var(--vscode-editor-background,rgba(255,255,255,0.05));border-radius:6px;height:8px;overflow:hidden">' +
-        '<div style="background:var(--vscode-button-background,#0e639c);height:100%;width:' + pct + '%;transition:width 0.2s"></div></div>' +
-        '<p style="margin:6px 0 0;font-size:11px;color:var(--vscode-descriptionForeground,#888)">' + pct + '%</p>';
+      body.innerHTML = '<div style="background:var(--vscode-editor-background);border-radius:4px;height:6px;overflow:hidden">' +
+        '<div style="background:var(--vscode-button-background);height:100%;width:' + pct + '%"></div></div>';
       btns.innerHTML = '';
     } else if (stage === 'installing') {
       title.textContent = '安装中';
-      body.innerHTML = '<p style="margin:0">正在安装 v' + ver + '，请稍候...</p>';
+      body.innerHTML = '<p style="margin:0">正在安装 v' + ver + '...</p>';
       btns.innerHTML = '';
     } else if (stage === 'done') {
       title.textContent = '更新完成';
-      body.innerHTML = '<p style="margin:0 0 8px">已安装 <b>v' + ver + '</b>，重载窗口后生效。</p>';
+      body.innerHTML = '<p style="margin:0 0 8px">已安装 v' + ver + '，重载窗口生效</p>';
       btns.innerHTML = '';
       const reloadBtn = document.createElement('button');
       reloadBtn.type = 'button';
@@ -1341,18 +1254,17 @@
       closeBtn.textContent = '稍后';
       closeBtn.onclick = () => fn5('updateAction', { action: 'dismiss' });
       btns.appendChild(closeBtn);
-      // 清掉按钮红点
       const checkBtn = fn4('checkForUpdatesBtn');
       if (checkBtn) checkBtn.classList.remove('has-update');
     } else if (stage === 'error') {
       title.textContent = '更新失败';
-      body.innerHTML = '<p style="margin:0 0 8px;color:var(--vscode-errorForeground,#f48771)">' + (info.error || '未知错误') + '</p>';
+      body.innerHTML = '<p style="margin:0 0 8px">' + (info.error || '未知错误') + '</p>';
       btns.innerHTML = '';
       if (releaseUrl) {
         const openBtn = document.createElement('button');
         openBtn.type = 'button';
         openBtn.className = 'btn btn-p sm';
-        openBtn.textContent = '去 GitHub 手动下载';
+        openBtn.textContent = '去 GitHub';
         openBtn.onclick = () => fn5('updateAction', { action: 'openRelease' });
         btns.appendChild(openBtn);
       }

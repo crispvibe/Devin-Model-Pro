@@ -101,11 +101,10 @@
     position: absolute;
     top: 2px;
     right: 2px;
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
     background: #ef4444;
-    box-shadow: 0 0 4px rgba(239, 68, 68, 0.6);
   }
 
   .btn-quiet {
@@ -1092,7 +1091,7 @@
     z-index: 1000;
   }
   .modal-body {
-    @apply p-4 rounded-3xl border border-vsborder;
+    @apply p-4 rounded-md border border-vsborder;
     background: var(--vscode-editor-background);
     min-width: 320px;
     max-width: 90%;

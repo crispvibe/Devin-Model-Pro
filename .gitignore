@@ -35,3 +35,7 @@ proxy-scripts/debug/
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+# 本地部署/发布笔记（仅本地参考，不推 GitHub）
+.devin/
+DEPLOY_NOTES.md

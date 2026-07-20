@@ -1,7 +1,7 @@
 # Devin Model Pro
 
 Devin Desktop 增强插件，按账号模式注入 SWE 模型到第三方 API，其他请求原样透传官方。
-基于最新 DevinLocal 协议，支持 Devin 全部 Agent 能力，本地执行子 Agent，内置在线更新。
+基于最新 DevinLocal 协议，支持 Devin 全部 Agent 能力，本地执行子 Agent。
 适用于 Mac，Windows 自行适配。
 **完全开源** | 本地运行 | 无后端服务器
 
@@ -15,7 +15,6 @@ Devin Desktop 增强插件，按账号模式注入 SWE 模型到第三方 API，
 - **子 Agent 本地执行**：主 Agent 派出的子 Agent 在本地跑 LLM 循环 + 工具执行，可以多个同时跑
 - **两个协议**：Claude（Anthropic）和 OpenAI
 - **节点 + 模型管理**：可配多个节点，每个节点一组 API 地址 + Key，节点下挂多个模型
-- **在线更新**：从 GitHub Release 检查、下载 VSIX、自动安装、一键重载
 
 记得点个 Star，后续有空会继续维护。
 
@@ -34,7 +33,6 @@ Devin Desktop 增强插件，按账号模式注入 SWE 模型到第三方 API，
 | 子 Agent | 不支持 | 本地执行，支持多个并发 |
 | Agent 能力 | Cascade 子集 | DevinLocal 全部 |
 | 模型管理 | 槽位 | 节点 + 模型 |
-| 在线更新 | 无 | 从 GitHub Release 自动检查下载安装 |
 
 ## 安装
 
@@ -93,16 +91,6 @@ Devin Desktop 增强插件，按账号模式注入 SWE 模型到第三方 API，
 切换方式：
 - 侧栏控制状态 Tab 显示当前模式徽章，点「切换」按钮改模式，自动重启代理
 - 命令面板搜「Devin Model Pro: 切换账号模式」
-
-## 在线更新
-
-插件内置从 GitHub Release 自动更新功能：
-
-- 启动后 10 秒静默检查 GitHub Releases，有新版给控制状态 Tab 的「检查更新」按钮加红点
-- 点按钮弹出自定义弹窗，显示当前版本、最新版本、更新日志
-- 点「下载并安装」显示进度条，下载完自动安装 VSIX
-- 安装完提示「重载窗口」，点重载即生效
-- Release 必须上传 `.vsix` 文件作为 asset，否则提示去 GitHub 手动下载
 
 ## 子 Agent
 

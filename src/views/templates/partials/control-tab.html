@@ -22,21 +22,26 @@
         <button type="button" class="btn btn-s sm" id="checkForUpdatesBtn" data-ws-action="checkForUpdates" title="从 GitHub 检查更新">检查更新</button>
     </div>
 
-    <!-- 账号模式 -->
-    <div class="row between" style="padding:2px 0 8px">
-        <div class="row" style="gap:6px;align-items:center">
-            <span style="font-size:11px;color:{{inputFgColor}}">账号模式</span>
-            <span id="accountModeBadge" class="badge" style="font-size:10px;padding:1px 6px">未选择</span>
-        </div>
-        <button type="button" class="btn btn-s sm" data-ws-action="switchAccountMode" style="font-size:10px;padding:2px 8px">切换</button>
-    </div>
-
     <!-- 自动启动 -->
     <div class="row between" style="padding:2px 0">
         <div class="row">
             <span style="font-size:11px;color:{{inputFgColor}}">自动启动</span>
             <label class="tog"><input type="checkbox" id="cfgAutoStartProxy" {{autoStartChecked}}><span></span></label>
         </div>
+    </div>
+</div>
+
+<!-- 账号模式卡片 -->
+<div class="card" style="margin-bottom:12px">
+    <div class="card-head between">
+        <span>账号模式</span>
+        <span id="accountModeBadge" class="badge" style="font-size:10px;padding:1px 6px">未选择</span>
+    </div>
+    <div style="font-size:11px;color:{{inputFgColor}};line-height:1.6;margin-bottom:8px">
+        Free 注入 swe-1-6 系列，Pro 注入 swe-1-7 系列，没注入的走官方。
+    </div>
+    <div class="btns">
+        <button type="button" class="btn btn-s sm" data-ws-action="switchAccountMode">切换账号模式</button>
     </div>
 </div>
 
@@ -99,17 +104,5 @@
         </div>
         <div id="updateModalBody" style="padding:4px 0;font-size:12px;line-height:1.6"></div>
         <div id="updateModalBtns" class="btns" style="margin-top:10px"></div>
-    </div>
-</div>
-
-<!-- 账号模式弹窗 -->
-<div id="accountModeModal" class="modal-mask" style="display:none">
-    <div class="modal-body" style="max-width:380px">
-        <div class="modal-head">
-            <span id="accountModeModalTitle">选择账号类型</span>
-            <button type="button" class="btn-icon" id="btnCloseAccountModeModal">×</button>
-        </div>
-        <div id="accountModeModalBody" style="padding:4px 0;font-size:12px;line-height:1.6"></div>
-        <div id="accountModeModalBtns" class="btns" style="margin-top:10px"></div>
     </div>
 </div>
