@@ -38,25 +38,32 @@ function truncate(s, max = MAX_OUTPUT) {
   s = String(s ?? '');
   return s.length > max ? s.slice(0, max) + '\n...[truncated]' : s;
 }
+const isWindows = process.platform === 'win32';
 function shellQuote(s) {
   s = String(s ?? '');
-  if (s === '') return "''";
+  if (s === '') return isWindows ? '""' : "''";
+  if (isWindows) {
+    // Windows: 用双引号包裹，内部双引号和反斜杠转义；安全字符直接用
+    if (/^[a-zA-Z0-9_.\\\/+:@,=-]+$/.test(s)) return s;
+    return '"' + s.replace(/(["\\])/g, '\\$1') + '"';
+  }
   if (/^[a-zA-Z0-9_.\/+:@,=-]+$/.test(s)) return s;
   return "'" + s.replace(/'/g, "'\\''") + "'";
 }
 
 // ===== 本地工具执行（Node 标准库）=====
-async function executeTool(name, params) {
+// workspacePath: 从主 Agent system prompt 提取的项目根目录，作为工具的默认 cwd
+async function executeTool(name, params, workspacePath) {
   try {
     switch (name) {
       case 'read': return await toolRead(params);
       case 'write': return await toolWrite(params);
       case 'edit': return await toolEdit(params);
       case 'multi_edit': return await toolMultiEdit(params);
-      case 'grep': return await toolGrep(params);
-      case 'find_file_by_name': return await toolFind(params);
+      case 'grep': return await toolGrep(params, workspacePath);
+      case 'find_file_by_name': return await toolFind(params, workspacePath);
       case 'list_dir': return await toolListDir(params);
-      case 'exec': return await toolExec(params);
+      case 'exec': return await toolExec(params, workspacePath);
       case 'web_search': return await toolWebSearch(params);
       case 'webfetch': return await toolWebfetch(params);
       case 'todo_write': return 'OK';
@@ -121,16 +128,17 @@ async function toolMultiEdit(p) {
   return `multi-edited ${fp} (${edits.length} edits)`;
 }
 
-async function toolGrep(p) {
+async function toolGrep(p, workspacePath) {
   const pattern = p.pattern || p.Query || p.query || p.search_term;
   if (!pattern) return 'error: pattern required';
-  const searchPath = p.path || p.SearchPath || '.';
+  const searchPath = p.path || p.SearchPath || workspacePath || '.';
   const caseInsensitive = !!p.case_insensitive;
   const ctx = parseInt(p.context_lines || '0', 10);
   const maxR = parseInt(p.max_results || '100', 10);
   const glob = p.glob_pattern || '';
-  // rg 命令优先级：DEVIN_BUNDLED_RG 绝对路径 > 系统 PATH 的 rg
-  const rgBin = process.env.DEVIN_BUNDLED_RG || 'rg';
+  // rg 命令优先级：DEVIN_BUNDLED_RG 绝对路径 > 系统 PATH 的 rg（Windows 加 .exe）
+  const rgBase = process.env.DEVIN_BUNDLED_RG || 'rg';
+  const rgBin = isWindows && !rgBase.endsWith('.exe') ? rgBase + '.exe' : rgBase;
   const args = ['--line-number', '-N', '--no-heading'];
   if (caseInsensitive) args.push('-i');
   if (ctx > 0) args.push('-C', String(ctx));
@@ -234,10 +242,14 @@ function globToRegex(glob) {
   return new RegExp(s + '$');
 }
 
-async function toolFind(p) {
+async function toolFind(p, workspacePath) {
   const pattern = p.pattern || p.Pattern;
   if (!pattern) return 'error: pattern required';
-  const dir = p.path || p.SearchDirectory || '.';
+  const dir = p.path || p.SearchDirectory || workspacePath || '.';
+  // Windows 无 Unix find，用 Node 内置递归实现
+  if (isWindows) {
+    return findNodeFallback(pattern, dir);
+  }
   try {
     const { stdout } = await execAsync(
       `find ${shellQuote(dir)} -name ${shellQuote(pattern)} -type f 2>/dev/null | head -100`,
@@ -245,6 +257,40 @@ async function toolFind(p) {
     );
     return truncate(stdout) || '(no matches)';
   } catch (e) { return `error: ${e.message}`; }
+}
+
+// Node 内置 find fallback（Windows 用）
+function findNodeFallback(pattern, dir) {
+  const results = [];
+  const skipDirs = new Set(['node_modules', '.git', 'dist', 'build', '.next', '__pycache__', '.venv', 'venv', '.cache']);
+  function walk(d, depth) {
+    if (depth > 15 || results.length >= 100) return;
+    let entries;
+    try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const ent of entries) {
+      if (results.length >= 100) return;
+      const full = path.join(d, ent.name);
+      if (ent.isDirectory()) {
+        if (skipDirs.has(ent.name)) continue;
+        walk(full, depth + 1);
+      } else if (ent.isFile()) {
+        // 简单 glob 匹配（支持 * 和 ?）
+        if (simpleGlobMatch(pattern, ent.name)) results.push(full);
+      }
+    }
+  }
+  try {
+    const st = fs.statSync(dir);
+    if (st.isDirectory()) walk(dir, 0);
+  } catch (e) { return `error: ${e.message}`; }
+  return truncate(results.join('\n')) || '(no matches)';
+}
+
+function simpleGlobMatch(pattern, name) {
+  // 把 glob 转 regex（支持 * 和 ?）
+  let s = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  s = s.replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]');
+  return new RegExp('^' + s + '$').test(name);
 }
 
 async function toolListDir(p) {
@@ -255,12 +301,14 @@ async function toolListDir(p) {
   } catch (e) { return `error: ${e.message}`; }
 }
 
-async function toolExec(p) {
+async function toolExec(p, workspacePath) {
   const cmd = p.command || p.CommandLine;
   if (!cmd) return 'error: command required';
-  const cwd = p.cwd || p.Cwd || process.cwd();
+  const cwd = p.cwd || p.Cwd || workspacePath || process.cwd();
   const timeout = parseInt(p.timeout || '30000', 10);
-  const { stdout, stderr } = await execAsync(cmd, { cwd, timeout, maxBuffer: 2 * 1024 * 1024 });
+  // Windows 用 cmd.exe 执行，Unix 用默认 shell
+  const shellOpt = isWindows ? 'cmd.exe' : undefined;
+  const { stdout, stderr } = await execAsync(cmd, { cwd, timeout, maxBuffer: 2 * 1024 * 1024, shell: shellOpt });
   let out = '';
   if (stdout) out += stdout;
   if (stderr) out += (out ? '\n[stderr]\n' : '') + stderr;
@@ -552,8 +600,12 @@ function callOpenAIOnce({ systemPrompt, messages, tools, resolvedModel, byokSlot
 }
 
 // ===== 子 Agent 主循环 =====
-export async function runSubagent({ task, profile, tools, resolvedModel, byokSlot, thinkingOptions }) {
-  const systemPrompt = getSubagentPrompt(profile);
+export async function runSubagent({ task, profile, tools, resolvedModel, byokSlot, thinkingOptions, workspacePath }) {
+  let systemPrompt = getSubagentPrompt(profile);
+  // 注入 workspace 路径，让子 Agent LLM 知道项目在哪，用绝对路径调工具
+  if (workspacePath) {
+    systemPrompt += `\n\nCurrent workspace: ${workspacePath}\nWhen using grep/find/exec with relative paths, they resolve to this workspace. Prefer absolute paths based on this workspace.`;
+  }
   const subTools = filterTools(tools);
   const useOpenAi = thinkingOptions?.provider === 'gpt' || thinkingOptions?.provider === 'gemini';
   const callFn = useOpenAi ? callOpenAIOnce : callAnthropicOnce;
@@ -625,7 +677,7 @@ export async function runSubagent({ task, profile, tools, resolvedModel, byokSlo
       const argsStr = JSON.stringify(tc.input);
       console.log(`  🤖 [subagent] exec ${tc.name}: ${argsStr.slice(0, 100)}`);
       emitSubagentToolExec({ agentId, tool: tc.name, args: argsStr, callId: tc.id });
-      const tr = await executeTool(tc.name, tc.input);
+      const tr = await executeTool(tc.name, tc.input, workspacePath);
       emitSubagentToolResult({ agentId, callId: tc.id, tool: tc.name, result: tr, ok: !tr.startsWith('error:') });
       toolResults.push({ type: 'tool_result', tool_use_id: tc.id, content: tr });
     }

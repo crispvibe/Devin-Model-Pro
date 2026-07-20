@@ -488,6 +488,7 @@ export async function handleGetChatMessage(arg0, arg1, arg2) {
     requestedModel: tmp7,
     initiator: tmp8,
     genConfig: tmpGenConfig,
+    workspacePath: tmpWorkspace,
   } = parseGetChatMessageRequest(arg2, arg0.headers);
   const tmp9 = 'bot-' + crypto.randomUUID();
   const tmp10 = getByokSlot(tmp7, process.env.ACCOUNT_MODE);
@@ -581,9 +582,9 @@ export async function handleGetChatMessage(arg0, arg1, arg2) {
       }
       // 未命中的本地执行
       if (toRun.length > 0) {
-        clearSubagents(); // 清空 UI 旧任务，只显示本次执行的 agents
         console.log('  🤖 [subagent] Executing ' + toRun.length + ' failed run_subagent locally (' + cached.length + ' cached)');
-        for (const fs of toRun) {
+        // 并行执行所有子 Agent，UI 同时显示多个
+        await Promise.all(toRun.map(fs => (async () => {
           try {
             const r = await runSubagent({
               task: fs.toolUse.input?.task || '',
@@ -592,6 +593,7 @@ export async function handleGetChatMessage(arg0, arg1, arg2) {
               resolvedModel: tmp11,
               byokSlot: tmp10,
               thinkingOptions: tmp13,
+              workspacePath: tmpWorkspace,
             });
             fs.toolResult.content = r;
             if (fs.toolResult.is_error) delete fs.toolResult.is_error;
@@ -604,7 +606,7 @@ export async function handleGetChatMessage(arg0, arg1, arg2) {
           } catch (e) {
             console.error('  🤖 [subagent] failed: ' + e.message);
           }
-        }
+        })()));
       }
     }
   }

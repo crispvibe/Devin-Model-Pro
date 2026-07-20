@@ -171,7 +171,7 @@ function activate(context) {
     }
     console.log('[Devin Model Pro] 扩展已就绪');
 
-    // 启动后静默检查更新（10 秒后，避免阻塞启动），有新版才通知 sidebar
+    // 启动后静默检查更新（60 秒后，避免阻塞启动且等网络稳定），有新版才通知 sidebar
     setTimeout(() => {
       checkForUpdate(context).then(result => {
         if (result && result.hasUpdate && sidebar && sidebar.notifyUpdateAvailable) {
@@ -180,7 +180,7 @@ function activate(context) {
       }).catch(e => {
         console.error('[Devin Model Pro] 静默更新检查失败:', e);
       });
-    }, 10000);
+    }, 60000);
   } catch (e) {
     console.error('[Devin Model Pro] activate 失败:', e);
     vscode.window.showErrorMessage('Devin Model Pro 启动失败: ' + (e instanceof Error ? e.message : String(e)));

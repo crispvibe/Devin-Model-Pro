@@ -13,6 +13,8 @@ import { parseFields, getField, getAllFields, fieldToString, fieldToInt, writeSt
 import { tryGunzip, unwrapRequest, wrapEnvelope, gzipSync } from "./connect.js";
 import { getByokSlot } from "./handlers/byok-slots.js";
 import crypto from "node:crypto";
+import os from "node:os";
+import path from "node:path";
 import { startWSBridge, getChatQueue, ackChatQueue, pushChatQueue, setActiveMonitorTarget } from "./ws-bridge.js";
 import { getSubagentList, clearSubagents } from "./subagent-state.js";
 import { getLoopbackListenHosts, loopbackApiUrl } from "./net-utils.js";
@@ -146,8 +148,9 @@ function makeRealResponseTee(arg3) {
     return new Transform({ transform(chunk, enc, cb) { cb(null, chunk); } });
   }
   const ts = Date.now();
-  const binPath = "/tmp/devin-real-response-" + ts + ".bin";
-  const txtPath = "/tmp/devin-real-response-" + ts + ".txt";
+  const tmpDir = os.tmpdir();
+  const binPath = path.join(tmpDir, "devin-real-response-" + ts + ".bin");
+  const txtPath = path.join(tmpDir, "devin-real-response-" + ts + ".txt");
   let binFd = null;
   let txtFd = null;
   try {

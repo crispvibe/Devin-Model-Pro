@@ -5,10 +5,15 @@ const https = require('node:https');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const { URL } = require('node:url');
 
 const REPO_OWNER = 'crispvibe';
 const REPO_NAME = 'Devin-Model-Pro';
 const RELEASES_API = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`;
+// GitHub 镜像前缀（主 URL 失败后依次尝试），空字符串表示原始 URL
+const MIRRORS = ['', 'https://ghproxy.com/', 'https://mirror.ghproxy.com/'];
+const MAX_RETRIES = 3;
+const RETRYABLE_CODES = new Set(['ECONNRESET', 'EPROTO', 'ETIMEDOUT', 'ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE']);
 
 function getCurrentVersion(context) {
   try {
@@ -31,57 +36,98 @@ function compareVersions(a, b) {
   return 0;
 }
 
-function fetchJson(url) {
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// 把错误码翻译成给用户的提示
+function describeError(e) {
+  const code = e && e.code;
+  const msg = e && e.message ? e.message : String(e);
+  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') return 'DNS 解析失败，无法连接 GitHub（可能被墙或网络断开），建议用代理或手动下载';
+  if (code === 'ECONNRESET' || code === 'EPROTO') return 'TLS 连接被重置（' + msg + '），GitHub 可能被墙，建议用代理或手动下载';
+  if (code === 'ETIMEDOUT') return '连接超时，网络不稳定或 GitHub 被墙';
+  if (code === 'ECONNREFUSED') return '连接被拒绝，检查代理设置';
+  return msg;
+}
+
+// 单次请求（不重试），支持重定向相对路径
+function fetchOnce(url, { headers = {}, timeout = 15000 } = {}) {
   return new Promise((resolve, reject) => {
-    const req = https.get(url, {
-      headers: {
-        'User-Agent': 'devin-model-pro-updater',
-        'Accept': 'application/vnd.github+json',
-      },
-      timeout: 15000,
-    }, (res) => {
+    const req = https.get(url, { headers, timeout }, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         res.resume();
-        fetchJson(res.headers.location).then(resolve, reject);
+        // 重定向 location 可能是相对路径，转成绝对路径
+        const nextUrl = new URL(res.headers.location, url).href;
+        fetchOnce(nextUrl, { headers, timeout }).then(resolve, reject);
         return;
       }
       if (res.statusCode !== 200) {
         res.resume();
-        reject(new Error(`GitHub API 返回 ${res.statusCode}`));
+        reject(new Error(`HTTP ${res.statusCode}`));
         return;
       }
       let body = '';
       res.setEncoding('utf8');
       res.on('data', chunk => { body += chunk; });
-      res.on('end', () => {
-        try { resolve(JSON.parse(body)); }
-        catch (e) { reject(new Error('解析 GitHub 响应失败: ' + e.message)); }
-      });
+      res.on('end', () => resolve(body));
     });
     req.on('error', reject);
     req.on('timeout', () => req.destroy(new Error('请求超时')));
   });
 }
 
-function downloadFile(url, destPath, progressCb) {
+// 带重试的请求（指数退避 1s/2s/4s）
+async function fetchWithRetry(url, options) {
+  let lastErr;
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    try {
+      return await fetchOnce(url, options);
+    } catch (e) {
+      lastErr = e;
+      const code = e.code || '';
+      // 4xx 不重试
+      if (/^HTTP 4\d\d$/.test(e.message)) throw e;
+      // 不可重试的错误直接抛
+      if (code && !RETRYABLE_CODES.has(code) && code !== 'ERR_HTTP_REQUEST_TIMEOUT') throw e;
+      if (i < MAX_RETRIES - 1) await sleep(1000 * Math.pow(2, i));
+    }
+  }
+  throw lastErr;
+}
+
+// 带镜像 fallback 的 JSON 请求
+async function fetchJsonWithMirror(url, options) {
+  let lastErr;
+  for (const mirror of MIRRORS) {
+    const fullUrl = mirror ? mirror + url : url;
+    try {
+      const body = await fetchWithRetry(fullUrl, options);
+      return JSON.parse(body);
+    } catch (e) {
+      lastErr = e;
+      // 主 URL 失败才试镜像
+    }
+  }
+  throw lastErr;
+}
+
+// 带镜像 fallback 的文件下载
+function downloadOnce(url, destPath, progressCb, headers = {}) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(destPath);
-    const req = https.get(url, {
-      headers: { 'User-Agent': 'devin-model-pro-updater' },
-      timeout: 60000,
-    }, (res) => {
+    const req = https.get(url, { headers, timeout: 60000 }, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         res.resume();
         file.close();
         fs.unlink(destPath, () => {});
-        downloadFile(res.headers.location, destPath, progressCb).then(resolve, reject);
+        const nextUrl = new URL(res.headers.location, url).href;
+        downloadOnce(nextUrl, destPath, progressCb, headers).then(resolve, reject);
         return;
       }
       if (res.statusCode !== 200) {
         res.resume();
         file.close();
         fs.unlink(destPath, () => {});
-        reject(new Error(`下载失败 ${res.statusCode}`));
+        reject(new Error(`HTTP ${res.statusCode}`));
         return;
       }
       const total = parseInt(res.headers['content-length'] || '0', 10);
@@ -102,6 +148,20 @@ function downloadFile(url, destPath, progressCb) {
   });
 }
 
+async function downloadWithMirror(url, destPath, progressCb, headers) {
+  let lastErr;
+  for (const mirror of MIRRORS) {
+    const fullUrl = mirror ? mirror + url : url;
+    try {
+      return await downloadOnce(fullUrl, destPath, progressCb, headers);
+    } catch (e) {
+      lastErr = e;
+      if (/^HTTP 4\d\d$/.test(e.message)) throw e;
+    }
+  }
+  throw lastErr;
+}
+
 // 纯检查，返回结构化结果，不弹任何 UI
 async function checkForUpdate(context) {
   const current = getCurrentVersion(context);
@@ -109,9 +169,15 @@ async function checkForUpdate(context) {
 
   let release;
   try {
-    release = await fetchJson(RELEASES_API);
+    release = await fetchJsonWithMirror(RELEASES_API, {
+      headers: {
+        'User-Agent': 'devin-model-pro-updater',
+        'Accept': 'application/vnd.github+json',
+      },
+      timeout: 15000,
+    });
   } catch (e) {
-    return { error: e.message };
+    return { error: describeError(e) };
   }
 
   const tag = String(release.tag_name || '').replace(/^v/i, '').trim();
@@ -137,19 +203,22 @@ async function checkForUpdate(context) {
 async function downloadAndInstall(latestVersion, downloadUrl, onProgress) {
   const tmpPath = path.join(os.tmpdir(), `devin-model-pro-${latestVersion}.vsix`);
   onProgress({ stage: 'downloading', percent: 0 });
-  await downloadFile(downloadUrl, tmpPath, (received, total) => {
-    const pct = Math.floor(received / total * 100);
-    onProgress({ stage: 'downloading', percent: pct });
-  });
-  onProgress({ stage: 'installing' });
   try {
-    await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(tmpPath));
-  } catch (e) {
-    throw new Error('安装失败: ' + e.message);
+    await downloadWithMirror(downloadUrl, tmpPath, (received, total) => {
+      const pct = Math.floor(received / total * 100);
+      onProgress({ stage: 'downloading', percent: pct });
+    }, { 'User-Agent': 'devin-model-pro-updater' });
+    onProgress({ stage: 'installing' });
+    try {
+      await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(tmpPath));
+    } catch (e) {
+      throw new Error('安装失败: ' + (e && e.message ? e.message : String(e)));
+    }
+    onProgress({ stage: 'done' });
+    return true;
+  } finally {
+    try { fs.unlink(tmpPath, () => {}); } catch (e) {}
   }
-  try { fs.unlink(tmpPath, () => {}); } catch (e) {}
-  onProgress({ stage: 'done' });
-  return true;
 }
 
 module.exports = {

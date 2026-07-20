@@ -875,8 +875,11 @@ class ProxyManager {
       const trusted = await certManager.isRootCATrusted();
       if (!trusted) {
         this.log("⚠️  根 CA 未安装到系统信任库，MITM HTTPS 解密将失败");
+        const platformHint = process.platform === 'win32'
+          ? '（Windows 会先尝试装到用户证书存储，无需管理员权限）'
+          : '（需要管理员权限）';
         const choice = await vscode.window.showWarningMessage(
-          'Devin Model Pro 需要安装根 CA 证书才能拦截 Devin Local 的 HTTPS 流量。是否现在安装？（需要管理员权限）',
+          'Devin Model Pro 需要安装根 CA 证书才能拦截 Devin Local 的 HTTPS 流量。是否现在安装？' + platformHint,
           '安装', '稍后'
         );
         if (choice === '安装') {
@@ -934,6 +937,7 @@ class ProxyManager {
     } catch {}
     this.hybridProcess = (0, child_process_1.spawn)("node", [tmp2], {
       cwd: this.proxyRoot,
+      shell: process.platform === "win32",
       env: {
         ...process.env,
         ...tmp4,
@@ -1032,6 +1036,7 @@ class ProxyManager {
         let tmp12 = false;
         this.inferenceProcess = (0, child_process_1.spawn)("node", [tmp02], {
           cwd: this.proxyRoot,
+          shell: process.platform === "win32",
           env: {
             ...process.env,
             ...tmp4,

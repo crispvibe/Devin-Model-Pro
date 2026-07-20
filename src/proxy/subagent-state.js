@@ -43,12 +43,25 @@ export function subagentEnd(rec) {
   a.summary = (rec.summary || '').slice(0, 500);
   a.endedAt = rec.ts || Date.now();
   a.turns = rec.turns || a.turns;
-  // 5 秒后自动删除，让 UI 看到结束状态后清空
-  setTimeout(() => {
-    agents.delete(rec.agentId);
-    const idx = order.indexOf(rec.agentId);
+  // 不自动删除，保留完成状态让 UI 显示所有 Agent
+  // 超过上限时自动清理最旧的已完成 Agent
+  pruneFinished();
+}
+
+function pruneFinished() {
+  // 总数超过 MAX 时，从最旧的已完成的开始删
+  if (order.length <= MAX) return;
+  const finished = order.filter(id => {
+    const a = agents.get(id);
+    return a && (a.status === 'completed' || a.status === 'failed');
+  });
+  // 删掉最旧的已完成，直到总数 <= MAX
+  while (order.length > MAX && finished.length > 0) {
+    const id = finished.shift();
+    agents.delete(id);
+    const idx = order.indexOf(id);
     if (idx >= 0) order.splice(idx, 1);
-  }, 5000);
+  }
 }
 
 export function clearSubagents() {

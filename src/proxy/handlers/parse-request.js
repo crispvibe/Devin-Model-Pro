@@ -64,11 +64,29 @@ function getCustomSystemPrompt() {
     return "";
   }
 }
+// 从 Devin system prompt 提取 workspace 路径
+// 格式1: "Current workspace directories:\n  /path/to/project (cwd)"
+// 格式2: "Current workspace: /path/to/project"
+// 格式3: "cwd: /path/to/project"
+function extractWorkspacePath(systemPrompt) {
+  if (!systemPrompt) return null;
+  // 路径匹配：Unix (/path) 或 Windows (C:\path 或 C:/path)，路径可含空格和中文
+  const pathPattern = '((?:/[^\n)]+)|(?:[A-Za-z]:[\\/][^\n)]+))';
+  // 格式1: "Current workspace directories:" 后面跟 "  /path (cwd)"
+  const m1 = systemPrompt.match(new RegExp('Current workspace directories:\\s*\\n\\s+' + pathPattern + '\\s+\\(cwd\\)'));
+  if (m1) return m1[1].trim();
+  // 格式2: "Current workspace: /path"
+  const m2 = systemPrompt.match(new RegExp('Current workspace:\\s*' + pathPattern));
+  if (m2) return m2[1].trim();
+  // 格式3: "cwd: /path" 或 "working directory: /path"
+  const m3 = systemPrompt.match(new RegExp('(?:cwd|working directory):\\s*' + pathPattern, 'i'));
+  if (m3) return m3[1].trim();
+  return null;
+}
 function dumpOriginalSystemPrompt(arg0) {
   if (!DEBUG_EXPORT_SYSTEM_PROMPT || !arg0) {
     return;
-  }
-  const tmp1 = path.isAbsolute(DEBUG_SYSTEM_PROMPT_DUMP_PATH) ? DEBUG_SYSTEM_PROMPT_DUMP_PATH : path.resolve(process.cwd(), DEBUG_SYSTEM_PROMPT_DUMP_PATH);
+  }  const tmp1 = path.isAbsolute(DEBUG_SYSTEM_PROMPT_DUMP_PATH) ? DEBUG_SYSTEM_PROMPT_DUMP_PATH : path.resolve(process.cwd(), DEBUG_SYSTEM_PROMPT_DUMP_PATH);
   if (_promptDumpCache.path === tmp1 && _promptDumpCache.content === arg0) {
     return;
   }
@@ -599,6 +617,8 @@ export function parseGetChatMessageRequest(arg0, arg1) {
   }
   const tmp17 = getField(tmp3, 12, 2);
   const tmp18 = tmp17 ? parseChatToolChoice(tmp17.value) : undefined;
+  // 从 system prompt 提取 workspace 路径，供子 Agent 工具执行用
+  const workspacePath = extractWorkspacePath(tmp7);
   const tmp19 = {
     systemPrompt: tmp7,
     messages: tmp14,
@@ -606,7 +626,8 @@ export function parseGetChatMessageRequest(arg0, arg1) {
     toolChoice: tmp18,
     requestedModel: tmp9,
     initiator: tmp12,
-    genConfig: tmpGenConfig
+    genConfig: tmpGenConfig,
+    workspacePath
   };
   return tmp19;
 }

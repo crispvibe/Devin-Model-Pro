@@ -1728,17 +1728,32 @@
     const iconHtml = a.status === "running"
       ? '<span class="sub-spinner"></span>'
       : a.status === "completed"
-      ? '<span class="sub-icon-ok">✅</span>'
-      : '<span class="sub-icon-err">❌</span>';
+      ? '<span class="sub-icon-ok">✓</span>'
+      : '<span class="sub-icon-err">✗</span>';
     const taskPreview = fn6((a.task || "").slice(0, 80)) + (a.task && a.task.length > 80 ? "…" : "");
+    const turnInfo = a.turns ? ' <span class="dim">(' + a.turns + ' turns)</span>' : '';
     return '<div class="sub-row">' + iconHtml +
-      '<span class="sub-label">' + taskPreview + '</span>' +
+      '<span class="sub-label">' + taskPreview + turnInfo + '</span>' +
       '</div>';
   }
 
   // 初次拉取 + 每 2 秒轮询
   setTimeout(subagentPoll, 500);
   subagentState.pollTimer = setInterval(subagentPoll, 2000);
+  // 清理按钮：调后端 /api/subagents/clear 清空所有 Agent
+  const clearBtn = fn4("clearSubagentsBtn");
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      const port = subagentGetPort();
+      fetch("http://127.0.0.1:" + port + "/api/subagents/clear", { method: "POST" })
+        .then(() => {
+          subagentState.agents = new Map();
+          subagentState.order = [];
+          renderSubagentPanel();
+        })
+        .catch(() => {});
+    });
+  }
   // 页面卸载时清理轮询定时器
   window.addEventListener("beforeunload", () => {
     if (subagentState.pollTimer) {

@@ -144,8 +144,12 @@ function isRootCATrusted() {
         });
       });
     } else if (process.platform === 'win32') {
-      exec('certutil -store Root "Devin Model Pro Root CA"', (err) => {
-        resolve(!err);
+      // 同时检查系统 Root store 和用户 Root store
+      exec('certutil -store Root "Devin Model Pro Root CA"', (err1) => {
+        if (!err1) { resolve(true); return; }
+        exec('certutil -user -store Root "Devin Model Pro Root CA"', (err2) => {
+          resolve(!err2);
+        });
       });
     } else {
       const isDebian = fs.existsSync('/etc/debian_version');
@@ -206,9 +210,40 @@ function installRootCA() {
         });
       });
     } else if (process.platform === 'win32') {
-      exec(`certutil -addstore -f Root "${certPath}"`, (err, stdout, stderr) => {
-        if (err) reject(new Error(stderr || err.message));
-        else resolve(stdout);
+      // 方案1：装到用户 CurrentUser\Root（无需管理员权限）
+      const tryUserStore = (cb) => {
+        exec(`certutil -user -addstore -f Root "${certPath}"`, (err, stdout, stderr) => {
+          cb(err, stdout, stderr);
+        });
+      };
+      // 方案2：UAC 提权装到系统 LocalMachine\Root
+      const tryMachineStore = (cb) => {
+        // PowerShell 单引号字符串不转义反斜杠，路径含空格也安全
+        const psCmd = `powershell -NoProfile -Command "Start-Process certutil -ArgumentList @('-addstore','-f','Root','${certPath.replace(/'/g, "''")}') -Verb RunAs -Wait"`;
+        exec(psCmd, (err, stdout, stderr) => {
+          cb(err, stdout, stderr);
+        });
+      };
+      // 方案3：打开证书安装向导让用户手动装
+      const tryOpenFile = (cb) => {
+        exec(`rundll32 cryptext.dll,CryptExtAddCER "${certPath}"`, (err) => {
+          cb(err, '', err ? err.message : '已打开证书安装向导，请手动完成安装');
+        });
+      };
+      tryUserStore((err1, out1, err1msg) => {
+        if (!err1) {
+          resolve('已安装到用户证书存储：' + out1);
+          return;
+        }
+        tryMachineStore((err2, out2, err2msg) => {
+          if (!err2) {
+            resolve('已安装到系统证书存储：' + out2);
+            return;
+          }
+          tryOpenFile((err3, out3, err3msg) => {
+            reject(new Error('自动安装失败（用户存储：' + (err1msg || '').trim() + '；系统存储：' + (err2msg || '').trim() + '）。已打开证书安装向导，请手动完成安装。'));
+          });
+        });
       });
     } else {
       const isDebian = fs.existsSync('/etc/debian_version');

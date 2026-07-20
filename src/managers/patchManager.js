@@ -74,10 +74,16 @@ class PatchManager {
     if (process.platform === "win32") {
       const tmp1 = process.env.LOCALAPPDATA || "";
       const tmp2 = process.env.ProgramFiles || "C:\\Program Files";
+      const tmp3 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
+      const tmp4 = process.env.ProgramW6432 || tmp2;
       for (const tmp02 of ["Devin", "devin"]) {
         PatchManager.addCandidate(tmp0, path.join(tmp1, "Programs", tmp02, "resources", "app", "out", "vs", "workbench", "workbench.desktop.main.js"));
         PatchManager.addCandidate(tmp0, path.join(tmp2, tmp02, "resources", "app", "out", "vs", "workbench", "workbench.desktop.main.js"));
+        PatchManager.addCandidate(tmp0, path.join(tmp3, tmp02, "resources", "app", "out", "vs", "workbench", "workbench.desktop.main.js"));
+        PatchManager.addCandidate(tmp0, path.join(tmp4, tmp02, "resources", "app", "out", "vs", "workbench", "workbench.desktop.main.js"));
       }
+      PatchManager.addWindowsProcessCandidates(tmp0);
+      PatchManager.addWindowsShortcutCandidates(tmp0);
     }
     if (process.platform === "linux") {
       const tmp1 = process.env.HOME || "";
@@ -231,7 +237,7 @@ class PatchManager {
     if (process.platform !== "win32") {
       return;
     }
-    for (const tmp02 of ["Devin.exe"]) {
+    for (const tmp02 of ["Devin.exe", "devin.exe", "Devin Desktop.exe"]) {
       try {
         const tmp03 = (0, child_process_1.execFileSync)("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "Get-CimInstance Win32_Process -Filter \"name='" + tmp02 + "'\" | Select-Object -ExpandProperty ExecutablePath"], {
           encoding: "utf8",
@@ -341,6 +347,7 @@ class PatchManager {
       const tmp02 = process.env.LOCALAPPDATA || "";
       const tmp1 = process.env.ProgramFiles || "C:\\Program Files";
       const tmp2 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
+      const tmp3 = process.env.ProgramW6432 || tmp1;
       if (tmp02) {
         for (const tmp03 of ["Devin", "devin"]) {
           PatchManager.addCandidate(tmp0, path.join(tmp02, "Programs", tmp03, "resources", "app", "extensions", "windsurf", "dist", "extension.js"));
@@ -349,8 +356,8 @@ class PatchManager {
       }
       PatchManager.addWindowsProcessCandidates(tmp0);
       PatchManager.addWindowsShortcutCandidates(tmp0);
-      PatchManager.addDirectorySearchCandidates(tmp0, [tmp1, tmp2], 3);
-      for (const tmp03 of [tmp1, tmp2]) {
+      PatchManager.addDirectorySearchCandidates(tmp0, [tmp1, tmp2, tmp3], 3);
+      for (const tmp03 of [tmp1, tmp2, tmp3]) {
         for (const tmp04 of ["Devin"]) {
           PatchManager.addCandidate(tmp0, path.join(tmp03, tmp04, "resources", "app", "extensions", "windsurf", "dist", "extension.js"));
         }
