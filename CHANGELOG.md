@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.4.23
+
+- 更新侧栏「使用教程」Tab 内容，覆盖 DevinLocal / Cascade 双模式和 Free / Pro 账号模式
+- 补 BYOK 槽位映射说明和子 Agent 并行数提示
+
 ## 2.4.22
 
 - 限制 subagent 并行数最多 6 个（环境变量 `BYOK_SUBAGENT_MAX_CONCURRENT` 可调）
