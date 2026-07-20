@@ -134,6 +134,10 @@ class SidebarProvider {
     if (this.proxyManager.getStatus().running) {
       this.refresh();
     }
+    // 补发缓存的更新检查结果（sidebar 晚于更新检查 ready 时，红点不会丢）
+    if (this._lastUpdateResult && this._lastUpdateResult.hasUpdate) {
+      this.notifyUpdateAvailable(this._lastUpdateResult);
+    }
   }
   async checkHttpHealth(tmp02, tmp1 = 5000) {
     const tmp2 = Date.now();

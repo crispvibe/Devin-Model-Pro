@@ -2,7 +2,7 @@
   "name": "devin-model-pro",
   "displayName": "Devin Model Pro",
   "description": "Devin Model Pro — Devin Desktop BYOK 增强，支持官方模型与第三方模型，Free / Pro 账号通用",
-  "version": "2.4.3",
+  "version": "2.4.4",
   "publisher": "crispvibe",
   "license": "MIT",
   "author": {
@@ -63,8 +63,7 @@
   ],
   "icon": "resources/icons/icon.png",
   "activationEvents": [
-    "onStartupFinished",
-    "onView:devin-model-pro.sidebar"
+    "onStartupFinished"
   ],
   "main": "./src/extension.js",
   "contributes": {

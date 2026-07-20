@@ -60,8 +60,8 @@ test('HTML 结构渲染', async (t) => {
 
   await t.test('应该包含两个 Tab 按钮 + 补丁弹窗入口', () => {
     const html = renderSidebarHtml(mockContext);
-    assert.ok(html.includes('data-tab="tab-config"'), '应该包含配置连接 tab');
-    assert.ok(html.includes('data-tab="tab-control"'), '应该包含控制状态 tab');
+    assert.ok(html.includes('data-tab="tab-config"'), '应该包含模型选择 tab');
+    assert.ok(html.includes('data-tab="tab-control"'), '应该包含设置 tab');
     assert.ok(!html.includes('data-tab="tab-system"'), '系统补丁不再作为 tab');
     assert.ok(html.includes('id="patchEntryBtn"'), '应该包含补丁入口按钮');
     assert.ok(html.includes('id="patchModal"'), '应该包含补丁弹窗');

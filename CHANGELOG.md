@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.4.4
+
+- Tab 重命名：「配置连接」→「模型选择」，「控制状态」→「设置」
+- 修复 sidebar 晚于更新检查 ready 时红点丢失的问题（resolveWebviewView 补发缓存的更新结果）
+- 删除冗余的 onView 激活事件（Devin Desktop 自动生成）
+
 ## 2.4.3
 
 - 补丁备份加版本校验（sha256 manifest），客户端更新后不再用旧备份还原导致文件损坏

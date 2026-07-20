@@ -151,7 +151,7 @@ test('Tab 顺序配置', async (t) => {
   await t.test('默认 tab 应该是 tab-config', () => {
     const sidebarPath = join(projectRoot, 'resources/webviews/sidebar.js');
     const sidebarCode = readFileSync(sidebarPath, 'utf-8');
-    // 需求：配置优先，默认进入配置连接页
+    // 需求：配置优先，默认进入模型选择页
     assert.ok(sidebarCode.includes('"tab-config"'), '默认 tab 应该是 tab-config');
   });
 
@@ -167,24 +167,24 @@ test('Tab 顺序配置', async (t) => {
 test('HTML 模板标签顺序', async (t) => {
   const html = renderHtml();
 
-  await t.test('配置连接应该是第一个 tab', () => {
+  await t.test('模型选择应该是第一个 tab', () => {
     const configTabIndex = html.indexOf('data-tab="tab-config"');
     const controlTabIndex = html.indexOf('data-tab="tab-control"');
 
-    assert.ok(configTabIndex > 0, '应该有配置连接 tab');
-    assert.ok(controlTabIndex > 0, '应该有控制状态 tab');
-    assert.ok(configTabIndex < controlTabIndex, '配置连接应该在控制状态之前');
+    assert.ok(configTabIndex > 0, '应该有模型选择 tab');
+    assert.ok(controlTabIndex > 0, '应该有设置 tab');
+    assert.ok(configTabIndex < controlTabIndex, '模型选择应该在设置之前');
     assert.ok(!html.includes('data-tab="tab-system"'), '不应再有系统补丁 tab');
   });
 
-  await t.test('配置连接 tab 应该有 active 类', () => {
+  await t.test('模型选择 tab 应该有 active 类', () => {
     const configTabMatch = html.match(/data-tab="tab-config"[^>]*>/);
-    assert.ok(configTabMatch, '应该找到配置连接 tab');
+    assert.ok(configTabMatch, '应该找到模型选择 tab');
     const buttonTag = html.substring(
       html.lastIndexOf('<button', configTabMatch.index),
       configTabMatch.index + configTabMatch[0].length
     );
-    assert.ok(buttonTag.includes('active'), '配置连接 tab 应该有 active 类');
+    assert.ok(buttonTag.includes('active'), '模型选择 tab 应该有 active 类');
   });
 });
 
@@ -216,11 +216,11 @@ test('模型选择提示', async (t) => {
 test('日志功能完整性', async (t) => {
   const html = renderHtml();
 
-  await t.test('日志应该在控制状态 tab', () => {
+  await t.test('日志应该在设置 tab', () => {
     const controlTabStart = html.indexOf('id="tab-control"');
     const logBoxIndex = html.indexOf('id="logBox"');
-    assert.ok(controlTabStart > 0, '应该有控制状态 tab');
-    assert.ok(logBoxIndex > controlTabStart, '日志应该在控制状态 tab 内');
+    assert.ok(controlTabStart > 0, '应该有设置 tab');
+    assert.ok(logBoxIndex > controlTabStart, '日志应该在设置 tab 内');
   });
 
   await t.test('日志高度应该是 300px', () => {

@@ -13,7 +13,7 @@
     <div class="flex items-center justify-between gap-2">
         <!-- 左侧：状态信息（窄屏自动换行） -->
         <div class="flex items-center flex-wrap gap-x-3 gap-y-1 min-w-0">
-            <!-- 补丁状态入口（点击切换到控制状态 Tab 的补丁卡片） -->
+            <!-- 补丁状态入口（点击切换到设置 Tab 的补丁卡片） -->
             <button type="button" id="patchEntryBtn" class="patch-entry" title="系统补丁">
                 <span class="status-dot" id="patchEntryDot"></span>
                 <span>补丁</span>
@@ -36,11 +36,11 @@
 <!-- 标签页导航 -->
 <div class="tabs">
     <button type="button" class="tab-btn active" data-tab="tab-config">
-        配置连接
+        模型选择
         <span class="tab-badge hidden" id="configBadge">!</span>
     </button>
     <button type="button" class="tab-btn" data-tab="tab-control">
-        控制状态
+        设置
         <span class="tab-badge hidden" id="controlBadge">●</span>
     </button>
     <button type="button" class="tab-btn" data-tab="tab-tutorial">
@@ -64,12 +64,12 @@
         <div class="action-progress"><div class="action-progress-bar"></div></div>
     </div>
 
-    <!-- TAB 1: 配置连接 -->
+    <!-- TAB 1: 模型选择 -->
     <div class="tab-content active" id="tab-config">
         {{configTab}}
     </div>
 
-    <!-- TAB 2: 控制状态 -->
+    <!-- TAB 2: 设置 -->
     <div class="tab-content" id="tab-control">
         {{controlTab}}
     </div>
