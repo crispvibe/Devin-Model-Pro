@@ -104,7 +104,8 @@ async function fetchJsonWithMirror(url, options) {
       return JSON.parse(body);
     } catch (e) {
       lastErr = e;
-      // 主 URL 失败才试镜像
+      // 4xx 不试其他镜像（如 404 在所有镜像都一样）
+      if (/^HTTP 4\d\d$/.test(e.message)) throw e;
     }
   }
   throw lastErr;
@@ -156,6 +157,7 @@ async function downloadWithMirror(url, destPath, progressCb, headers) {
       return await downloadOnce(fullUrl, destPath, progressCb, headers);
     } catch (e) {
       lastErr = e;
+      // 4xx 不试其他镜像
       if (/^HTTP 4\d\d$/.test(e.message)) throw e;
     }
   }

@@ -8,10 +8,6 @@ export function subagentStart(rec) {
   const id = rec.agentId;
   if (!agents.has(id)) {
     order.push(id);
-    if (order.length > MAX) {
-      const old = order.shift();
-      agents.delete(old);
-    }
   }
   agents.set(id, {
     agentId: id,
@@ -27,6 +23,8 @@ export function subagentStart(rec) {
     ok: false,
     summary: ''
   });
+  // 超限时只清理已完成的，不删 running
+  pruneFinished();
 }
 
 export function subagentTurn(rec) {
