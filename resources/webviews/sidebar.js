@@ -1138,6 +1138,8 @@
       fn5("refreshPatchStatus");
     } else if (tmp12.type === "updateInfo") {
       handleUpdateInfo(tmp12);
+    } else if (tmp12.type === "accountModePrompt") {
+      handleAccountModePrompt(tmp12);
     } else if (tmp12.type === "updateAvailable") {
       // 启动静默检查发现新版，给按钮加红点提示
       const btn = fn4('checkForUpdatesBtn');
@@ -1189,6 +1191,77 @@
     if (state) el.dataset.state = state;
     else delete el.dataset.state;
   }
+
+  // ========== 账号模式弹窗 ==========
+  function handleAccountModePrompt(info) {
+    const modal = fn4('accountModeModal');
+    const title = fn4('accountModeModalTitle');
+    const body = fn4('accountModeModalBody');
+    const btns = fn4('accountModeModalBtns');
+    if (!modal || !body || !btns) return;
+
+    if (info.visible === false) {
+      modal.style.display = 'none';
+      return;
+    }
+    modal.style.display = 'flex';
+    title.textContent = info.title || '选择账号类型';
+
+    const current = info.current || '';
+    const stage = info.stage || 'choose';
+
+    let html = '';
+    if (current) {
+      const curLabel = current === 'free' ? 'Free（注入 swe-1-6）' : 'Pro（注入 swe-1-7）';
+      html += '<p style="margin:0 0 8px">当前：<b>' + curLabel + '</b></p>';
+    }
+    html += '<p style="margin:0 0 6px">选择你的 Devin 账号类型，决定注入哪个 SWE 版本到第三方 API：</p>';
+    html += '<div style="background:var(--vscode-textBlockQuote-background,rgba(255,255,255,0.04));border-radius:6px;padding:8px 10px;margin:6px 0;font-size:11px;line-height:1.7">';
+    html += '<div><b style="color:#22c55e">Free</b>：注入 swe-1-6 系列（swe-1-6 / medium / fast）</div>';
+    html += '<div style="margin-top:4px"><b style="color:#3b82f6">Pro</b>：注入 swe-1-7 系列（swe-1-7 / medium / max）</div>';
+    html += '<div style="margin-top:6px;color:var(--vscode-descriptionForeground,#888)">没注入的 SWE 版本走官方</div>';
+    html += '</div>';
+    if (stage === 'switch') {
+      html += '<p style="margin:6px 0 0;color:var(--vscode-descriptionForeground,#888);font-size:11px">切换后代理会自动重启</p>';
+    }
+    body.innerHTML = html;
+
+    btns.innerHTML = '';
+    const freeBtn = document.createElement('button');
+    freeBtn.type = 'button';
+    freeBtn.className = 'btn btn-p sm';
+    freeBtn.textContent = 'Free（注入 swe-1-6）';
+    freeBtn.style.background = 'rgba(34,197,94,0.2)';
+    freeBtn.onclick = () => fn5('accountModeAction', { action: 'free' });
+    btns.appendChild(freeBtn);
+
+    const proBtn = document.createElement('button');
+    proBtn.type = 'button';
+    proBtn.className = 'btn btn-p sm';
+    proBtn.textContent = 'Pro（注入 swe-1-7）';
+    proBtn.style.background = 'rgba(59,130,246,0.2)';
+    proBtn.onclick = () => fn5('accountModeAction', { action: 'pro' });
+    btns.appendChild(proBtn);
+
+    if (stage === 'switch' || current) {
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'btn btn-s sm';
+      cancelBtn.textContent = '取消';
+      cancelBtn.onclick = () => fn5('accountModeAction', { action: 'dismiss' });
+      btns.appendChild(cancelBtn);
+    }
+  }
+  // 账号模式 modal 关闭按钮和遮罩点击
+  (function bindAccountModeModalClose() {
+    const btn = fn4('btnCloseAccountModeModal');
+    if (btn) btn.addEventListener('click', () => fn5('accountModeAction', { action: 'dismiss' }));
+    const modal = fn4('accountModeModal');
+    if (modal) modal.addEventListener('click', (e) => {
+      if (e.target === modal) fn5('accountModeAction', { action: 'dismiss' });
+    });
+  })();
+  // ========== 账号模式弹窗结束 ==========
 
   // ========== 更新弹窗 ==========
   function handleUpdateInfo(info) {

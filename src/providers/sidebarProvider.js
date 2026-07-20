@@ -581,6 +581,64 @@ class SidebarProvider {
   postUpdateInfo(payload) {
     this.view?.webview.postMessage({ type: 'updateInfo', ...payload });
   }
+  // 推送账号模式 modal 到前端
+  postAccountModePrompt(payload) {
+    this.view?.webview.postMessage({ type: 'accountModePrompt', ...payload });
+  }
+  // 首次启动选模式：onChoice(mode) 用户选完回调
+  promptAccountModeChoice(onChoice) {
+    this._accountModeChoiceCb = onChoice;
+    const current = this.context.globalState.get('devin-model-pro.accountMode') || '';
+    this.postAccountModePrompt({
+      visible: true,
+      stage: 'choose',
+      current,
+      title: '选择账号类型',
+    });
+  }
+  // 手动切换模式（侧栏按钮触发）
+  handleSwitchAccountMode() {
+    const current = this.context.globalState.get('devin-model-pro.accountMode') || '';
+    this.postAccountModePrompt({
+      visible: true,
+      stage: 'switch',
+      current,
+      title: '切换账号类型',
+    });
+  }
+  // 处理 modal 里的按钮动作
+  async handleAccountModeAction(action) {
+    if (action === 'dismiss') {
+      this.postAccountModePrompt({ visible: false });
+      // 首次启动选模式时 dismiss 视为取消
+      if (this._accountModeChoiceCb) {
+        this._accountModeChoiceCb(null);
+        this._accountModeChoiceCb = null;
+      }
+      return;
+    }
+    if (action === 'free' || action === 'pro') {
+      await this.context.globalState.update('devin-model-pro.accountMode', action);
+      this.postAccountModePrompt({ visible: false });
+      // 首次启动选模式回调
+      if (this._accountModeChoiceCb) {
+        this._accountModeChoiceCb(action);
+        this._accountModeChoiceCb = null;
+      }
+      // 切换模式：重启代理
+      const running = this.proxyManager.getStatus().running;
+      if (running) {
+        this.proxyManager.stop();
+        const runtime = this.getRuntimeConfigForCurrentMode();
+        runtime.ACCOUNT_MODE = action;
+        this.proxyManager.start('both', runtime);
+      }
+      this.postActionState('config', 'success',
+        action === 'free' ? '已切换到 Free 模式' + (running ? '，代理已重启' : '') : '已切换到 Pro 模式' + (running ? '，代理已重启' : ''));
+      this.postStatusSnapshot();
+      return;
+    }
+  }
   // 启动时静默检查到新版，通知前端显示红点提示（不自动弹窗）
   notifyUpdateAvailable(result) {
     this._lastUpdateResult = result;
@@ -1522,7 +1580,12 @@ class SidebarProvider {
         break;
       }
       case 'switchAccountMode': {
-        vscode.commands.executeCommand('devin-model-pro.switchAccountMode');
+        this.handleSwitchAccountMode();
+        break;
+      }
+      case 'accountModeAction': {
+        const action = String(tmp02.action || '');
+        await this.handleAccountModeAction(action);
         break;
       }
       case 'updateAction': {
