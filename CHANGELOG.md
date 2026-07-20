@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.4.22
+
+- 限制 subagent 并行数最多 6 个（环境变量 `BYOK_SUBAGENT_MAX_CONCURRENT` 可调）
+- 避免一次性启动过多 subagent 撞上游 503 / 上下文超长
+
+## 2.4.21
+
+- 修复 OpenAI reasoning 思考输出不在 UI 显示的问题
+- 补全 `response.reasoning_text.delta` 事件处理（部分网关用这个事件名）
+- 加兜底：事件名含 reasoning/thinking 且有 delta 字段时自动当 thinking delta 处理
+- 加 reasoning 事件调试日志方便定位
+
 ## 2.4.20
 
 - README 对比表修正：上游版本 Agent 能力改为"不支持"，移除平台行

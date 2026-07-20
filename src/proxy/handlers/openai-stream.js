@@ -75,8 +75,12 @@ export class OpenAIStreamProcessor {
       data: tmp2
     } = tmp0;
     const tmp3 = [];
+    if (tmp1 && (tmp1.includes("reasoning") || tmp1.includes("thinking")) && tmp1 !== "response.reasoning_summary_part.added" && tmp1 !== "response.reasoning_summary_part.done" && tmp1 !== "response.reasoning_summary_text.done") {
+      console.log("  🔍 OpenAI reasoning event: " + tmp1 + " data=" + JSON.stringify(tmp2).slice(0, 200));
+    }
     switch (tmp1) {
       case "response.reasoning.delta":
+      case "response.reasoning_text.delta":
         if (tmp2.delta) {
           tmp3.push(buildThinkingDelta(this._messageId, tmp2.delta, this._chunkCtx));
         }
@@ -166,6 +170,11 @@ export class OpenAIStreamProcessor {
       default:
         if (tmp1 && !tmp1.startsWith("response.")) {
           console.log("  ℹ️  Unknown OpenAI event: " + tmp1);
+        }
+        // 兜底：事件名含 reasoning/thinking 且有 delta，当 thinking delta 处理
+        if (tmp1 && (tmp1.includes("reasoning") || tmp1.includes("thinking")) && tmp2?.delta) {
+          console.log("  🔧 Fallback reasoning event as thinking delta: " + tmp1);
+          tmp3.push(buildThinkingDelta(this._messageId, tmp2.delta, this._chunkCtx));
         }
         break;
     }

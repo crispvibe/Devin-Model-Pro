@@ -582,31 +582,41 @@ export async function handleGetChatMessage(arg0, arg1, arg2) {
       }
       // 未命中的本地执行
       if (toRun.length > 0) {
-        console.log('  🤖 [subagent] Executing ' + toRun.length + ' failed run_subagent locally (' + cached.length + ' cached)');
-        // 并行执行所有子 Agent，UI 同时显示多个
-        await Promise.all(toRun.map(fs => (async () => {
-          try {
-            const r = await runSubagent({
-              task: fs.toolUse.input?.task || '',
-              profile: fs.toolUse.input?.profile || 'subagent_general',
-              tools: tmp5,
-              resolvedModel: tmp11,
-              byokSlot: tmp10,
-              thinkingOptions: tmp13,
-              workspacePath: tmpWorkspace,
-            });
-            fs.toolResult.content = r;
-            if (fs.toolResult.is_error) delete fs.toolResult.is_error;
-            subagentResultCache.set(fs.toolUse.id, r);
-            if (subagentResultCache.size > SUBAGENT_CACHE_MAX) {
-              const firstKey = subagentResultCache.keys().next().value;
-              subagentResultCache.delete(firstKey);
+        const MAX_CONCURRENT = parseInt(process.env.BYOK_SUBAGENT_MAX_CONCURRENT || '6', 10);
+        console.log('  🤖 [subagent] Executing ' + toRun.length + ' failed run_subagent locally (' + cached.length + ' cached, max ' + MAX_CONCURRENT + ' concurrent)');
+        // 并行执行所有子 Agent，UI 同时显示多个，但限制并发数避免上游 503/上下文超长
+        let running = 0;
+        let idx = 0;
+        const results = new Array(toRun.length);
+        const runOne = async (slot) => {
+          while (idx < toRun.length) {
+            const i = idx++;
+            const fs = toRun[i];
+            try {
+              const r = await runSubagent({
+                task: fs.toolUse.input?.task || '',
+                profile: fs.toolUse.input?.profile || 'subagent_general',
+                tools: tmp5,
+                resolvedModel: tmp11,
+                byokSlot: tmp10,
+                thinkingOptions: tmp13,
+                workspacePath: tmpWorkspace,
+              });
+              fs.toolResult.content = r;
+              if (fs.toolResult.is_error) delete fs.toolResult.is_error;
+              subagentResultCache.set(fs.toolUse.id, r);
+              if (subagentResultCache.size > SUBAGENT_CACHE_MAX) {
+                const firstKey = subagentResultCache.keys().next().value;
+                subagentResultCache.delete(firstKey);
+              }
+              console.log('  🤖 [subagent] result ok: ' + r.slice(0, 120).replace(/\n/g, ' '));
+            } catch (e) {
+              console.error('  🤖 [subagent] failed: ' + e.message);
             }
-            console.log('  🤖 [subagent] result ok: ' + r.slice(0, 120).replace(/\n/g, ' '));
-          } catch (e) {
-            console.error('  🤖 [subagent] failed: ' + e.message);
           }
-        })()));
+        };
+        const slots = Math.min(MAX_CONCURRENT, toRun.length);
+        await Promise.all(Array.from({ length: slots }, () => runOne()));
       }
     }
   }
